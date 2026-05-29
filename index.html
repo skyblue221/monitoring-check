@@ -90,6 +90,7 @@
   .stat-card.red .stat-num { color: var(--poor); }
   .stat-card.amber .stat-num { color: var(--fair); }
   .stat-card.green .stat-num { color: var(--good); }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: all 0.15s; }
  
   /* 전체 기록 목록 */
   .record-item { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; }
@@ -188,19 +189,19 @@
 <!-- 홈 대시보드 -->
 <div id="home" class="section active">
   <div class="stat-grid">
-    <div class="stat-card teal">
+    <div class="stat-card teal" onclick="goToRecords('','')" style="cursor:pointer">
       <div class="stat-num" id="st-total">0</div>
       <div class="stat-label">전체 기록</div>
     </div>
-    <div class="stat-card red">
+    <div class="stat-card red" onclick="goToRecords('','조치 필요')" style="cursor:pointer">
       <div class="stat-num" id="st-action">0</div>
       <div class="stat-label">조치 필요</div>
     </div>
-    <div class="stat-card amber">
+    <div class="stat-card amber" onclick="goToRecords('apply','')" style="cursor:pointer">
       <div class="stat-num" id="st-apply">0</div>
       <div class="stat-label">보급 신청</div>
     </div>
-    <div class="stat-card green">
+    <div class="stat-card green" onclick="goToRecords('','양호')" style="cursor:pointer">
       <div class="stat-num" id="st-good">0</div>
       <div class="stat-label">양호 판정</div>
     </div>
@@ -384,28 +385,10 @@
 <div id="settings" class="section">
   <div class="card">
     <div class="card-title">Google 시트 연결</div>
-    <div id="sheet-status" class="settings-status disconnected">⚠️ 시트가 연결되지 않았어요</div>
-    <div class="field">
-      <label class="field-label">Apps Script 웹앱 URL</label>
-      <input type="url" id="sheet-url" placeholder="https://script.google.com/macros/s/..." />
-    </div>
-    <button class="sec-btn primary" onclick="saveSheetUrl()">연결 저장</button>
-    <button class="sec-btn" onclick="testSheet()">테스트 전송</button>
-    <button class="sec-btn danger" onclick="clearSheetUrl()">연결 해제</button>
+    <div id="sheet-status" class="settings-status connected">✅ 시트가 연결되어 있어요</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-top:8px">신청 및 모니터링 기록이 Google 시트에 자동으로 저장됩니다.</p>
+    <button class="sec-btn" onclick="testSheet()" style="margin-top:12px">테스트 전송</button>
     <div id="settings-toast" class="toast" style="margin-top:10px"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">앱 데이터</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">기록은 이 기기에 저장됩니다. 초기화하면 모든 기록이 삭제돼요.</p>
-    <button class="sec-btn danger" onclick="clearAllData()">모든 기록 초기화</button>
-  </div>
-  <div class="card">
-    <div class="card-title">시트 설정 안내</div>
-    <ol style="font-size:13px;color:var(--text-muted);line-height:2;padding-left:18px">
-      <li>Google 시트 첫 행에 헤더를 만들어요</li>
-      <li>확장 프로그램 → Apps Script에 코드 붙여넣기</li>
-      <li>웹 앱으로 배포 → URL을 위에 입력</li>
-    </ol>
   </div>
 </div>
  
@@ -564,6 +547,15 @@ function updateDashboard() {
   el.innerHTML = recent.map(r => recordCard(r)).join('');
 }
  
+// ── 홈 카드 클릭 → 기록 탭 이동 ─────────────────────
+function goToRecords(type, action) {
+  const tab = document.querySelector('.tab:nth-child(4)');
+  switchTab('records', tab);
+  document.getElementById('filter-type').value = type;
+  document.getElementById('filter-action').value = action;
+  renderRecords();
+}
+ 
 // ── 전체 기록 ─────────────────────────────────────
 function renderRecords() {
   const filterType = document.getElementById('filter-type').value;
@@ -593,38 +585,16 @@ function recordCard(r) {
  
 // ── 설정 ─────────────────────────────────────────
 function loadSettingsUI() {
-  const url = localStorage.getItem('scriptUrl') || '';
-  document.getElementById('sheet-url').value = url;
-  const st = document.getElementById('sheet-status');
-  if (url) { st.className = 'settings-status connected'; st.textContent = '✅ 시트가 연결되어 있어요'; }
-  else { st.className = 'settings-status disconnected'; st.textContent = '⚠️ 시트가 연결되지 않았어요'; }
+  // URL 고정 — 변경 불필요
 }
-function saveSheetUrl() {
-  const url = document.getElementById('sheet-url').value.trim();
-  if (!url) { showToast('settings-toast','URL을 입력해 주세요.','error'); return; }
-  localStorage.setItem('scriptUrl', url);
-  SCRIPT_URL = url;
-  loadSettingsUI();
-  showToast('settings-toast','✅ 저장되었습니다!','success');
-}
+function saveSheetUrl() {}
 async function testSheet() {
   try {
     await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body: JSON.stringify({type:'test', timestamp: new Date().toLocaleString('ko-KR')}), headers:{'Content-Type':'application/json'} });
     showToast('settings-toast','✅ 테스트 전송 완료! 시트를 확인해 보세요.','success');
   } catch(e) { showToast('settings-toast','전송 실패. URL을 확인해 주세요.','error'); }
 }
-function clearSheetUrl() {
-  if (!confirm('연결을 해제할까요?')) return;
-  localStorage.removeItem('scriptUrl');
-  SCRIPT_URL = '';
-  loadSettingsUI();
-}
-function clearAllData() {
-  if (!confirm('모든 기록을 삭제할까요? 되돌릴 수 없어요.')) return;
-  localStorage.removeItem('records');
-  updateDashboard();
-  showToast('settings-toast','기록이 초기화되었습니다.','success');
-}
+ 
  
  
 // ── 지도 ─────────────────────────────────────────
@@ -696,7 +666,53 @@ function initMap() {
 }
  
 // ── 초기화 ────────────────────────────────────────
+ 
+// 샘플 데이터 (처음 실행 시 한 번만)
+function loadSampleData() {
+  if (localStorage.getItem('sampleLoaded')) return;
+  const samples = [
+    {
+      type: 'apply', name: '삼청동 수제비', addr: '서울 종로구 삼청로 101',
+      items: '점자메뉴판', phone: '02-123-4567', memo: '단골 시각장애인 손님이 계세요',
+      timestamp: '2026. 5. 20. 오전 10:30:00', action: ''
+    },
+    {
+      type: 'apply', name: '인사동 쌈지길 카페', addr: '서울 종로구 인사동길 44',
+      items: '경사로', phone: '02-234-5678', memo: '입구 턱이 높아서 휠체어 진입이 어려워요',
+      timestamp: '2026. 5. 21. 오후 2:15:00', action: ''
+    },
+    {
+      type: 'apply', name: '낙원상가 분식집', addr: '서울 종로구 삼일대로 428',
+      items: '점자메뉴판, 경사로', phone: '010-3456-7890', memo: '',
+      timestamp: '2026. 5. 22. 오전 11:00:00', action: ''
+    },
+    {
+      type: 'monitor', name: '통인시장 입구', addr: '서울 종로구 자하문로15길 18',
+      date: '2026-05-23', r1: '미흡', r2: '보통', r3: '미흡', r4: '보통',
+      action: '조치 필요', comment: '점자메뉴판 없는 가게가 대부분이고, 일부 입구에 턱이 있어 휠체어 진입 어려움. 화장실 접근성도 개선 필요.',
+      author: '김모니터', timestamp: '2026. 5. 23. 오후 3:00:00'
+    },
+    {
+      type: 'monitor', name: '북촌한옥마을 카페거리', addr: '서울 종로구 북촌로 31',
+      date: '2026-05-24', r1: '보통', r2: '좋음', r3: '좋음', r4: '좋음',
+      action: '양호', comment: '경사로 설치가 잘 되어 있고 안내판도 읽기 쉬움. 점자메뉴판은 일부 카페만 구비.',
+      author: '이모니터', timestamp: '2026. 5. 24. 오전 10:00:00'
+    },
+    {
+      type: 'monitor', name: '광화문 교보빌딩 앞 상가', addr: '서울 종로구 종로 1',
+      date: '2026-05-25', r1: '미흡', r2: '좋음', r3: '좋음', r4: '좋음',
+      action: '추후 확인', comment: '건물 접근성은 우수하나 내부 상가 점자메뉴판 미비. 담당자 연락 후 추후 확인 예정.',
+      author: '박모니터', timestamp: '2026. 5. 25. 오후 1:30:00'
+    }
+  ];
+  // 역순으로 넣어야 최신순 정렬
+  const existing = getRecords();
+  localStorage.setItem('records', JSON.stringify([...samples.reverse(), ...existing]));
+  localStorage.setItem('sampleLoaded', 'true');
+}
+ 
 document.getElementById('m_date').valueAsDate = new Date();
+loadSampleData();
 updateDashboard();
 loadSettingsUI();
 </script>
