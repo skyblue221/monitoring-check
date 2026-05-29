@@ -137,7 +137,7 @@
   .pin-key.empty { visibility: hidden; }
   .lock-error { font-size: 12px; color: var(--red); margin-top: 12px; min-height: 18px; }
 </style>
-<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=80997111825554ef64ddb0481b4c0a76&libraries=services"></script>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=80997111825554ef64ddb0481b4c0a76&libraries=services&autoload=false"></script>
 </head>
 <body>
  
@@ -632,61 +632,65 @@ let mapInstance = null;
 let mapMarkers = [];
  
 function initMap() {
-  const records = getRecords().filter(r => r.type === 'apply' && r.addr);
-  const container = document.getElementById('kakao-map');
+  kakao.maps.load(function() {
+    const records = getRecords().filter(r => r.type === 'apply' && r.addr);
+    const container = document.getElementById('kakao-map');
  
-  // 지도 초기화 (종로구 중심)
-  const options = { center: new kakao.maps.LatLng(37.5726, 126.9793), level: 5 };
-  if (!mapInstance) {
-    mapInstance = new kakao.maps.Map(container, options);
-  }
+    // 지도 초기화 (종로구 중심)
+    const options = { center: new kakao.maps.LatLng(37.5726, 126.9793), level: 5 };
+    if (!mapInstance) {
+      mapInstance = new kakao.maps.Map(container, options);
+    } else {
+      mapInstance.relayout();
+    }
  
-  // 기존 마커 제거
-  mapMarkers.forEach(m => m.setMap(null));
-  mapMarkers = [];
+    // 기존 마커 제거
+    mapMarkers.forEach(m => m.setMap(null));
+    mapMarkers = [];
  
-  // 목록 렌더링
-  const listEl = document.getElementById('map-list');
-  if (records.length === 0) {
-    listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div>아직 신청 기록이 없어요</div>';
-    return;
-  }
+    // 목록 렌더링
+    const listEl = document.getElementById('map-list');
+    if (records.length === 0) {
+      listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div>아직 신청 기록이 없어요</div>';
+      return;
+    }
  
-  const geocoder = new kakao.maps.services.Geocoder();
-  listEl.innerHTML = '';
+    const geocoder = new kakao.maps.services.Geocoder();
+    listEl.innerHTML = '';
  
-  records.forEach((rec, idx) => {
-    // 목록 아이템
-    const item = document.createElement('div');
-    item.className = 'record-item';
-    item.style.cursor = 'pointer';
-    item.innerHTML = `
-      <div class="rec-top"><span class="rec-name">📍 ${rec.name}</span><span class="rec-date">${rec.timestamp}</span></div>
-      <div class="rec-addr">${rec.addr}</div>
-      <div class="rec-tags"><span class="tag" style="background:#e0f2fe;color:#0369a1">${rec.items || ''}</span></div>`;
-    listEl.appendChild(item);
+    records.forEach((rec, idx) => {
+      // 목록 아이템
+      const item = document.createElement('div');
+      item.className = 'record-item';
+      item.style.cursor = 'pointer';
+      item.innerHTML = `
+        <div class="rec-top"><span class="rec-name">📍 ${rec.name}</span><span class="rec-date">${rec.timestamp}</span></div>
+        <div class="rec-addr">${rec.addr}</div>
+        <div class="rec-tags"><span class="tag" style="background:#e0f2fe;color:#0369a1">${rec.items || ''}</span></div>`;
+      listEl.appendChild(item);
  
-    // 주소 → 좌표 변환 후 마커
-    geocoder.addressSearch(rec.addr, function(result, status) {
-      if (status === kakao.maps.services.Status.OK) {
-        const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-        const marker = new kakao.maps.Marker({ map: mapInstance, position: coords });
-        mapMarkers.push(marker);
+      // 주소 → 좌표 변환 후 마커
+      geocoder.addressSearch(rec.addr, function(result, status) {
+        if (status === kakao.maps.services.Status.OK) {
+          const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+          const marker = new kakao.maps.Marker({ map: mapInstance, position: coords });
+          mapMarkers.push(marker);
  
-        // 인포윈도우
-        const info = new kakao.maps.InfoWindow({
-          content: `<div style="padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;min-width:120px"><strong>${rec.name}</strong><br><span style="color:#6b7280;font-size:12px">${rec.items || ''}</span></div>`
-        });
-        kakao.maps.event.addListener(marker, 'click', function() { info.open(mapInstance, marker); });
+          // 인포윈도우
+          const info = new kakao.maps.InfoWindow({
+            content: `<div style="padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;min-width:120px"><strong>${rec.name}</strong><br><span style="color:#6b7280;font-size:12px">${rec.items || ''}</span></div>`
+          });
+          kakao.maps.event.addListener(marker, 'click', function() { info.open(mapInstance, marker); });
  
-        // 목록 클릭 시 해당 위치로 이동
-        item.addEventListener('click', function() {
-          mapInstance.setCenter(coords);
-          mapInstance.setLevel(3);
-          info.open(mapInstance, marker);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-      }
+          // 목록 클릭 시 해당 위치로 이동
+          item.addEventListener('click', function() {
+            mapInstance.setCenter(coords);
+            mapInstance.setLevel(3);
+            info.open(mapInstance, marker);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          });
+        }
+      });
     });
   });
 }
