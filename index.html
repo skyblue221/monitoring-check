@@ -138,7 +138,7 @@
   .pin-key.empty { visibility: hidden; }
   .lock-error { font-size: 12px; color: var(--red); margin-top: 12px; min-height: 18px; }
 </style>
-<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=80997111825554ef64ddb0481b4c0a76&libraries=services&autoload=false"></script>
+ 
 </head>
 <body>
  
@@ -609,7 +609,18 @@ let mapInstance = null;
 let mapMarkers = [];
  
 function initMap() {
-  kakao.maps.load(function() {
+  if (typeof kakao === 'undefined') {
+    const script = document.createElement('script');
+    script.src = '//dapi.kakao.com/v2/maps/sdk.js?appkey=80997111825554ef64ddb0481b4c0a76&libraries=services';
+    script.onload = function() { renderMap(); };
+    document.head.appendChild(script);
+  } else {
+    renderMap();
+  }
+}
+ 
+function renderMap() {
+  {
     const records = getRecords().filter(r => r.type === 'apply' && r.addr);
     const container = document.getElementById('kakao-map');
  
@@ -669,7 +680,7 @@ function initMap() {
         }
       });
     });
-  });
+  }
 }
  
 // ── 초기화 ────────────────────────────────────────
