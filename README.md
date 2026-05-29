@@ -1,40 +1,53 @@
-# 모니터링단 접근성 기록함
+# 모두의 접근 지도
 
-`index.html`을 브라우저로 열면 바로 사용할 수 있습니다.
+점자메뉴판과 경사로가 필요한 장소를 주민이 신청하고, 모니터링단이 현장 기록과 후속 조치 필요 사항을 남길 수 있는 작은 웹앱입니다.
 
-## 할 수 있는 일
+## 바로 사용하기
 
-- 점자메뉴판, 경사로, 직원 응대, 후속 조치 필요 여부를 모니터링 기록으로 저장
-- 점자메뉴판 또는 경사로 보급이 필요한 장소를 신청 기록으로 저장
-- 전체 기록 검색, 유형별 필터, 상태별 필터
-- CSV 내보내기로 엑셀/스프레드시트에서 후속 정리
-- Apps Script 웹앱 URL을 저장해 새 기록을 구글시트에도 전송
+`index.html`을 브라우저로 열면 실행됩니다. 더 안정적으로 확인하려면 이 폴더에서 간단한 로컬 서버를 열어 접속할 수 있습니다.
 
-기록은 현재 브라우저에 저장됩니다. `시트 연결` 화면에 Apps Script 웹앱 URL을 저장하면 새 기록이 구글시트에도 전송됩니다.
-
-## 구글시트 연결 코드
-
-구글시트에서 `확장 프로그램 > Apps Script`를 열고 아래 코드를 붙여넣은 뒤 웹 앱으로 배포하세요.
-
-```javascript
-function doPost(e) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const data = JSON.parse(e.postData.contents);
-
-  sheet.appendRow([
-    new Date(),
-    data.kind || "",
-    data.place || "",
-    data.location || "",
-    data.status || "",
-    (data.tags || []).join(", "),
-    data.kind === "request" ? data.reason || "" : [data.good, data.issue].filter(Boolean).join(" / "),
-    data.owner || "",
-    data.contact || ""
-  ]);
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+```powershell
+python -m http.server 8765 --bind 127.0.0.1
 ```
+
+그 다음 브라우저에서 `http://127.0.0.1:8765/index.html`로 접속합니다.
+
+## 주요 기능
+
+- 점자메뉴판, 경사로 신청 접수
+- 쉬운 안내판과 기타 필요 항목 신청
+- 경사로 우선 보급 가능 수량 6곳 표시
+- 비밀번호 확인 후 모니터링단 현장 기록 저장
+- 좋았던 점, 부족한 점, 필요한 조치, 현장 사진 기록
+- 현황판 요약과 유형별 막대 시각화
+- 전체 기록 검색, 유형/상태/행정동 필터
+- 카카오 지도에서 주소가 있는 기록 표시, 도메인 설정 전에는 지도 미리보기 표시
+- 처음 실행 시 샘플 기록 2건 표시
+- 전체 기록에서 상태 변경과 수정
+- 삭제와 전체 초기화는 담당자 확인 후 진행
+- 현황판 숫자 클릭 시 해당 목록으로 이동
+- 기록 카드는 상세 열기/닫기 지원
+- CSV 내보내기
+- 고정된 Apps Script 웹앱 URL로 구글시트 전송 시도
+- 브라우저 localStorage 저장
+
+## 모니터링단 비밀번호
+
+현재 모니터링단 비밀번호는 `app.js`의 `DEFAULT_MONITOR_PASSWORD` 값으로 관리합니다. 담당자 삭제/초기화 비밀번호는 `MANAGER_PASSWORD` 값으로 분리되어 있습니다.
+
+정적 웹앱에 들어간 비밀번호는 완전한 보안이 아니므로 실제 운영 전에는 서버 인증, Google 계정 허용 명단, Firebase Auth 같은 별도 관리자 인증 방식으로 바꾸는 것을 권장합니다.
+
+## 사진 관리
+
+현재 프로토타입은 1.5MB 이하 사진을 브라우저 기록과 구글시트 전송 데이터에 포함합니다. 실제 운영에서는 Apps Script가 사진 데이터를 Google Drive 폴더에 저장하고, 시트에는 Drive 파일 링크만 남기는 방식이 적합합니다.
+
+## Apps Script
+
+`apps-script.gs`에 구글시트 연동 초안을 넣어두었습니다. Google Apps Script 프로젝트에 붙여 넣은 뒤 `PHOTO_FOLDER_ID`와 `MANAGER_EMAIL`을 채우고 웹앱으로 배포하면 생성, 수정, 상태 변경, 삭제, 초기화, 사진 Drive 저장, 메일 알림 흐름을 처리할 수 있습니다.
+
+## 다음 단계 아이디어
+
+- 여러 사람이 함께 쓰도록 Firebase 또는 서버 저장소 연동
+- 지도 좌표와 행정동 필터 추가
+- 사진 업로드와 관리자 검토 상태 추가
+- 신청자에게 처리 결과 알림 보내기
