@@ -1,751 +1,288 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>배리어프리 마을 만들기</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --teal: #1a8c6e; --teal-light: #e6f5f1; --teal-mid: #a8ddd0;
-    --text: #1e1e1e; --text-muted: #6b7280; --border: #e0e0e0;
-    --bg: #f7f8fa; --white: #ffffff; --red: #dc2626;
-    --good: #16a34a; --good-bg: #dcfce7;
-    --fair: #d97706; --fair-bg: #fef3c7;
-    --poor: #dc2626; --poor-bg: #fee2e2;
-    --radius: 12px; --radius-sm: 8px;
-  }
-  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
- 
-  /* 헤더 */
-  .app-header { background: var(--white); border-bottom: 1px solid var(--border); padding: 14px 20px; position: sticky; top: 0; z-index: 100; }
-  .app-header h1 { font-size: 17px; font-weight: 700; color: var(--teal); letter-spacing: -0.3px; }
-  .app-header p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
- 
-  /* 탭 */
-  .tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); position: sticky; top: 57px; z-index: 99; overflow-x: auto; }
-  .tab { flex: 1; min-width: 64px; padding: 12px 4px; font-size: 12px; font-weight: 500; font-family: 'Noto Sans KR', sans-serif; color: var(--text-muted); background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.18s; white-space: nowrap; }
-  .tab.active { color: var(--teal); border-bottom-color: var(--teal); }
- 
-  /* 섹션 */
-  .section { display: none; padding: 20px 16px 60px; max-width: 560px; margin: 0 auto; }
-  .section.active { display: block; }
- 
-  /* 공통 컴포넌트 */
-  .notice { background: var(--teal-light); border-left: 3px solid var(--teal); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; padding: 10px 14px; font-size: 13px; color: #1a5c4a; line-height: 1.6; margin-bottom: 18px; }
-  .card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 16px; margin-bottom: 14px; }
-  .card-title { font-size: 13px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.4px; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
-  .card-title::before { content: ''; display: inline-block; width: 3px; height: 13px; background: var(--teal); border-radius: 2px; }
-  .field { margin-bottom: 14px; }
-  .field:last-child { margin-bottom: 0; }
-  label.field-label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
-  .req { color: var(--red); margin-left: 2px; }
-  .opt { color: var(--text-muted); font-weight: 400; font-size: 12px; margin-left: 4px; }
-  input[type=text], input[type=tel], input[type=date], input[type=url], textarea, select { width: 100%; padding: 10px 12px; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; color: var(--text); background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-sm); outline: none; transition: border-color 0.15s; -webkit-appearance: none; }
-  input:focus, textarea:focus, select:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,140,110,0.1); }
-  textarea { resize: vertical; min-height: 88px; line-height: 1.6; }
-  .check-list { display: flex; flex-direction: column; gap: 10px; }
-  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; }
-  .check-item:has(input:checked) { border-color: var(--teal); background: var(--teal-light); }
-  .check-item input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; accent-color: var(--teal); cursor: pointer; }
-  .check-item .item-info { flex: 1; }
-  .check-item .item-name { font-size: 14px; font-weight: 500; }
-  .check-item .item-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .rating-group { display: flex; gap: 8px; }
-  .rating-btn { flex: 1; padding: 9px 6px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--white); cursor: pointer; transition: all 0.15s; color: var(--text-muted); }
-  .rating-btn:hover { border-color: #aaa; color: var(--text); }
-  .rating-btn.sel-good { background: var(--good-bg); border-color: var(--good); color: var(--good); font-weight: 700; }
-  .rating-btn.sel-fair { background: var(--fair-bg); border-color: var(--fair); color: var(--fair); font-weight: 700; }
-  .rating-btn.sel-poor { background: var(--poor-bg); border-color: var(--poor); color: var(--poor); font-weight: 700; }
-  .pill-group { display: flex; gap: 8px; flex-wrap: wrap; }
-  .pill { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border: 1px solid var(--border); border-radius: 20px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; color: var(--text-muted); background: var(--white); cursor: pointer; transition: all 0.15s; user-select: none; }
-  .pill.active-yes { border-color: var(--poor); color: var(--poor); background: var(--poor-bg); }
-  .pill.active-no { border-color: var(--good); color: var(--good); background: var(--good-bg); }
-  .pill.active-follow { border-color: var(--fair); color: var(--fair); background: var(--fair-bg); }
-  .photo-drop { border: 1.5px dashed var(--teal-mid); border-radius: var(--radius-sm); padding: 20px; text-align: center; cursor: pointer; background: var(--teal-light); transition: all 0.15s; }
-  .photo-drop:hover { border-color: var(--teal); }
-  .photo-drop .drop-icon { font-size: 28px; margin-bottom: 6px; }
-  .photo-drop p { font-size: 13px; color: var(--teal); font-weight: 500; }
-  .photo-drop small { font-size: 11px; color: var(--text-muted); }
-  .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-  .photo-thumb { width: 72px; height: 72px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border); }
-  .submit-btn { width: 100%; padding: 14px; background: var(--teal); color: var(--white); font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: var(--radius); cursor: pointer; margin-top: 6px; transition: all 0.15s; }
-  .submit-btn:hover { background: #167a5e; }
-  .submit-btn:active { transform: scale(0.99); }
-  .submit-btn:disabled { background: #aaa; cursor: not-allowed; }
-  .toast { display: none; margin-top: 12px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; text-align: center; line-height: 1.5; }
-  .toast.success { display: block; background: var(--good-bg); color: var(--good); border: 1px solid #86efac; }
-  .toast.error { display: block; background: var(--poor-bg); color: var(--poor); border: 1px solid #fca5a5; }
-  .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
- 
-  /* 대시보드 */
-  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
-  .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; text-align: center; }
-  .stat-card .stat-num { font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
-  .stat-card .stat-label { font-size: 12px; color: var(--text-muted); }
-  .stat-card.teal .stat-num { color: var(--teal); }
-  .stat-card.red .stat-num { color: var(--poor); }
-  .stat-card.amber .stat-num { color: var(--fair); }
-  .stat-card.green .stat-num { color: var(--good); }
-  .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: all 0.15s; }
- 
-  /* 전체 기록 목록 */
-  .record-item { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; }
-  .record-item .rec-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-  .record-item .rec-name { font-size: 14px; font-weight: 700; }
-  .record-item .rec-addr { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
-  .record-item .rec-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-  .tag { font-size: 11px; padding: 3px 8px; border-radius: 10px; font-weight: 500; }
-  .tag-apply { background: #e0f2fe; color: #0369a1; }
-  .tag-monitor { background: #f3e8ff; color: #7c3aed; }
-  .tag-action { background: var(--poor-bg); color: var(--poor); }
-  .tag-good { background: var(--good-bg); color: var(--good); }
-  .tag-fair { background: var(--fair-bg); color: var(--fair); }
-  .rec-date { font-size: 11px; color: var(--text-muted); }
-  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 14px; }
-  .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
- 
-  /* 설정 */
-  .settings-status { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; }
-  .settings-status.connected { background: var(--good-bg); color: var(--good); }
-  .settings-status.disconnected { background: var(--poor-bg); color: var(--poor); }
-  .sec-btn { padding: 10px 16px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 500; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--white); cursor: pointer; transition: all 0.15s; color: var(--text); margin-right: 8px; margin-top: 8px; }
-  .sec-btn:hover { background: var(--bg); }
-  .sec-btn.danger { border-color: var(--poor); color: var(--poor); }
-  .sec-btn.danger:hover { background: var(--poor-bg); }
-  .sec-btn.primary { background: var(--teal); color: white; border-color: var(--teal); }
-  .sec-btn.primary:hover { background: #167a5e; }
- 
-  /* 비밀번호 잠금 */
-  .lock-screen { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 200; align-items: center; justify-content: center; flex-direction: column; }
-  .lock-screen.show { display: flex; }
-  .lock-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 32px 28px; width: 300px; text-align: center; }
-  .lock-icon { font-size: 36px; margin-bottom: 12px; }
-  .lock-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .lock-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
-  .pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 24px; }
-  .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); background: var(--white); transition: all 0.15s; }
-  .pin-dot.filled { background: var(--teal); border-color: var(--teal); }
-  .pin-dot.error { background: var(--red); border-color: var(--red); }
-  .pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .pin-key { padding: 14px; font-family: 'Noto Sans KR', sans-serif; font-size: 18px; font-weight: 500; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.1s; color: var(--text); }
-  .pin-key:hover { background: var(--teal-light); border-color: var(--teal-mid); }
-  .pin-key:active { transform: scale(0.95); }
-  .pin-key.del { font-size: 14px; color: var(--text-muted); }
-  .pin-key.empty { visibility: hidden; }
-  .lock-error { font-size: 12px; color: var(--red); margin-top: 12px; min-height: 18px; }
-</style>
- 
-</head>
-<body>
- 
-<!-- 비밀번호 잠금 -->
-<div class="lock-screen" id="lock-screen">
-  <div class="lock-card">
-    <div class="lock-icon">🔒</div>
-    <div class="lock-title">모니터링단 전용</div>
-    <div class="lock-sub">4자리 비밀번호를 입력해 주세요</div>
-    <div class="pin-dots">
-      <div class="pin-dot" id="dot0"></div>
-      <div class="pin-dot" id="dot1"></div>
-      <div class="pin-dot" id="dot2"></div>
-      <div class="pin-dot" id="dot3"></div>
-    </div>
-    <div class="pin-keypad">
-      <button class="pin-key" onclick="pinInput('1')">1</button>
-      <button class="pin-key" onclick="pinInput('2')">2</button>
-      <button class="pin-key" onclick="pinInput('3')">3</button>
-      <button class="pin-key" onclick="pinInput('4')">4</button>
-      <button class="pin-key" onclick="pinInput('5')">5</button>
-      <button class="pin-key" onclick="pinInput('6')">6</button>
-      <button class="pin-key" onclick="pinInput('7')">7</button>
-      <button class="pin-key" onclick="pinInput('8')">8</button>
-      <button class="pin-key" onclick="pinInput('9')">9</button>
-      <button class="pin-key empty"></button>
-      <button class="pin-key" onclick="pinInput('0')">0</button>
-      <button class="pin-key del" onclick="pinDelete()">지우기</button>
-    </div>
-    <div class="lock-error" id="lock-error"></div>
-    <button onclick="closeLock()" style="margin-top:16px;background:none;border:none;font-family:'Noto Sans KR',sans-serif;font-size:13px;color:var(--text-muted);cursor:pointer;text-decoration:underline;">취소</button>
-  </div>
-</div>
- 
-<header class="app-header">
-  <h1>🌿 배리어프리 마을 만들기</h1>
-  <p>점자메뉴판·경사로 신청 및 모니터링 기록</p>
-</header>
- 
-<nav class="tabs">
-  <button class="tab active"   onclick="switchTab('home',    this)">🏠 홈</button>
-  <button class="tab"          onclick="switchTab('apply',   this)">📋 신청</button>
-  <button class="tab"          onclick="requirePin(this)">🔍 모니터링</button>
-  <button class="tab"          onclick="switchTab('records', this)">📄 기록</button>
-  <button class="tab"          onclick="switchTab('map',     this)">🗺️ 지도</button>
-  <button class="tab"          onclick="switchTab('settings',this)">⚙️ 설정</button>
-</nav>
- 
-<!-- 홈 대시보드 -->
-<div id="home" class="section active">
-  <div class="stat-grid">
-    <div class="stat-card teal" onclick="goToRecords('','')" style="cursor:pointer">
-      <div class="stat-num" id="st-total">0</div>
-      <div class="stat-label">전체 기록</div>
-    </div>
-    <div class="stat-card red" onclick="goToRecords('','조치 필요')" style="cursor:pointer">
-      <div class="stat-num" id="st-action">0</div>
-      <div class="stat-label">조치 필요</div>
-    </div>
-    <div class="stat-card amber" onclick="goToRecords('apply','')" style="cursor:pointer">
-      <div class="stat-num" id="st-apply">0</div>
-      <div class="stat-label">보급 신청</div>
-    </div>
-    <div class="stat-card green" onclick="goToRecords('','양호')" style="cursor:pointer">
-      <div class="stat-num" id="st-good">0</div>
-      <div class="stat-label">양호 판정</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">최근 기록</div>
-    <div id="recent-list"><div class="empty-state"><div class="empty-icon">📭</div>아직 기록이 없어요</div></div>
-  </div>
-</div>
- 
-<!-- 신청하기 -->
-<div id="apply" class="section">
-  <div class="notice">점자메뉴판 또는 경사로 보급을 원하시는 상점·시설을 신청해 주세요.<br>담당자가 확인 후 연락드립니다.</div>
-  <div class="card">
-    <div class="card-title">상점 정보</div>
-    <div class="field">
-      <label class="field-label">상호명<span class="req">*</span></label>
-      <input type="text" id="a_name" placeholder="예) 종로분식" />
-    </div>
-    <div class="field">
-      <label class="field-label">주소<span class="req">*</span></label>
-      <input type="text" id="a_addr" placeholder="예) 서울시 종로구 종로1길 12" />
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">신청 항목</div>
-    <div class="check-list">
-      <label class="check-item">
-        <input type="checkbox" id="a_braille" />
-        <div class="item-info">
-          <div class="item-name">📖 점자메뉴판</div>
-          <div class="item-desc">시각장애인을 위한 음식·메뉴 안내용 점자 메뉴판</div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>모니터링단 접근성 기록함</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="주요 메뉴">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">M</div>
+          <div>
+            <h1>모니터링단</h1>
+            <p>접근성 기록함</p>
+          </div>
         </div>
-      </label>
-      <label class="check-item">
-        <input type="checkbox" id="a_ramp" />
-        <div class="item-info">
-          <div class="item-name">♿ 경사로</div>
-          <div class="item-desc">휠체어·유모차 이용자를 위한 출입구 경사로</div>
+
+        <nav class="nav-list" aria-label="화면 전환">
+          <button class="nav-item active" data-view="dashboard" type="button">
+            <span aria-hidden="true">⌂</span>
+            현황
+          </button>
+          <button class="nav-item" data-view="monitoring" type="button">
+            <span aria-hidden="true">□</span>
+            모니터링 기록
+          </button>
+          <button class="nav-item" data-view="request" type="button">
+            <span aria-hidden="true">＋</span>
+            보급 신청
+          </button>
+          <button class="nav-item" data-view="list" type="button">
+            <span aria-hidden="true">≡</span>
+            전체 기록
+          </button>
+          <button class="nav-item" data-view="settings" type="button">
+            <span aria-hidden="true">⚙</span>
+            시트 연결
+          </button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <section class="topbar">
+          <div>
+            <p class="eyebrow">현장 기록 · 신청 · 후속 조치</p>
+            <h2 id="view-title">오늘의 접근성 현황</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="ghost-button" id="export-csv" type="button">CSV 내보내기</button>
+            <button class="danger-button" id="clear-data" type="button">초기화</button>
+          </div>
+        </section>
+
+        <section class="view active" id="dashboard" aria-labelledby="view-title">
+          <div class="stats-grid" aria-label="요약 통계">
+            <article class="stat-panel">
+              <p>전체 기록</p>
+              <strong id="stat-total">0</strong>
+            </article>
+            <article class="stat-panel">
+              <p>보급 신청</p>
+              <strong id="stat-request">0</strong>
+            </article>
+            <article class="stat-panel">
+              <p>조치 필요</p>
+              <strong id="stat-action">0</strong>
+            </article>
+            <article class="stat-panel">
+              <p>좋은 사례</p>
+              <strong id="stat-good">0</strong>
+            </article>
+          </div>
+
+          <div class="dashboard-layout">
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>최근 기록</h3>
+                <button class="text-button" data-view-jump="list" type="button">전체 보기</button>
+              </div>
+              <div class="record-list compact" id="recent-records"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h3>유형별 현황</h3>
+              </div>
+              <div class="type-bars" id="type-bars"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="monitoring" aria-labelledby="view-title">
+          <form class="form-grid" id="monitoring-form">
+            <div class="form-section full">
+              <h3>모니터링 기록</h3>
+            </div>
+
+            <label>
+              장소명
+              <input name="place" type="text" placeholder="예: 은평구 행복식당" required />
+            </label>
+            <label>
+              주소 또는 위치
+              <input name="location" type="text" placeholder="예: 서울 은평구 ○○로 12" />
+            </label>
+            <label>
+              방문일
+              <input name="date" type="date" required />
+            </label>
+            <label>
+              모니터링 담당자
+              <input name="owner" type="text" placeholder="이름 또는 팀명" />
+            </label>
+
+            <fieldset class="full">
+              <legend>확인 항목</legend>
+              <div class="check-grid">
+                <label><input name="hasBrailleMenu" type="checkbox" /> 점자메뉴판 있음</label>
+                <label><input name="needsBrailleMenu" type="checkbox" /> 점자메뉴판 필요</label>
+                <label><input name="hasRamp" type="checkbox" /> 경사로 있음</label>
+                <label><input name="needsRamp" type="checkbox" /> 경사로 필요</label>
+                <label><input name="staffHelpful" type="checkbox" /> 직원 응대 좋음</label>
+                <label><input name="actionNeeded" type="checkbox" /> 후속 조치 필요</label>
+              </div>
+            </fieldset>
+
+            <label class="full">
+              좋은 점
+              <textarea name="good" rows="4" placeholder="접근이 편했던 점, 응대가 좋았던 점 등을 적어주세요."></textarea>
+            </label>
+            <label class="full">
+              부족한 점과 필요한 조치
+              <textarea name="issue" rows="5" placeholder="예: 입구 턱이 높아 이동이 어렵고, 임시 경사로 설치가 필요합니다."></textarea>
+            </label>
+
+            <div class="form-actions full">
+              <button class="primary-button" type="submit">기록 저장</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="view" id="request" aria-labelledby="view-title">
+          <form class="form-grid" id="request-form">
+            <div class="form-section full">
+              <h3>점자메뉴판 · 경사로 보급 신청</h3>
+            </div>
+
+            <label>
+              신청 장소명
+              <input name="place" type="text" placeholder="예: 우리동네 김밥" required />
+            </label>
+            <label>
+              주소 또는 위치
+              <input name="location" type="text" placeholder="방문자가 찾을 수 있는 위치" required />
+            </label>
+            <label>
+              신청 품목
+              <select name="requestType" required>
+                <option value="">선택</option>
+                <option value="점자메뉴판">점자메뉴판</option>
+                <option value="경사로">경사로</option>
+                <option value="점자메뉴판, 경사로">점자메뉴판, 경사로</option>
+                <option value="기타 접근성 지원">기타 접근성 지원</option>
+              </select>
+            </label>
+            <label>
+              우선순위
+              <select name="priority">
+                <option value="보통">보통</option>
+                <option value="높음">높음</option>
+                <option value="긴급">긴급</option>
+              </select>
+            </label>
+            <label>
+              신청자
+              <input name="owner" type="text" placeholder="이름 또는 연락 가능한 팀명" />
+            </label>
+            <label>
+              연락처
+              <input name="contact" type="text" placeholder="선택 입력" />
+            </label>
+            <label class="full">
+              신청 사유
+              <textarea name="reason" rows="6" placeholder="이곳에 있으면 좋은 이유와 실제 이용 상황을 적어주세요." required></textarea>
+            </label>
+
+            <div class="form-actions full">
+              <button class="primary-button" type="submit">신청 저장</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="view" id="list" aria-labelledby="view-title">
+          <div class="filter-row">
+            <label>
+              검색
+              <input id="search-input" type="search" placeholder="장소, 주소, 내용 검색" />
+            </label>
+            <label>
+              유형
+              <select id="type-filter">
+                <option value="all">전체</option>
+                <option value="monitoring">모니터링</option>
+                <option value="request">보급 신청</option>
+              </select>
+            </label>
+            <label>
+              상태
+              <select id="status-filter">
+                <option value="all">전체</option>
+                <option value="조치 필요">조치 필요</option>
+                <option value="확인 완료">확인 완료</option>
+                <option value="신청 접수">신청 접수</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="record-list" id="all-records"></div>
+        </section>
+
+        <section class="view" id="settings" aria-labelledby="view-title">
+          <form class="form-grid settings-form" id="settings-form">
+            <div class="form-section full">
+              <h3>구글시트 연결</h3>
+              <p class="helper-text">Apps Script 웹앱 URL을 저장하면 새 기록이 구글시트에도 함께 쌓입니다.</p>
+            </div>
+
+            <label class="full">
+              Apps Script 웹앱 URL
+              <input
+                id="sheet-url"
+                name="sheetUrl"
+                type="url"
+                placeholder="https://script.google.com/macros/s/.../exec"
+              />
+            </label>
+
+            <div class="connection-status full" id="connection-status">
+              구글시트가 아직 연결되지 않았습니다.
+            </div>
+
+            <div class="form-actions full">
+              <button class="primary-button" type="submit">연결 저장</button>
+              <button class="ghost-button" id="test-sheet" type="button">테스트 전송</button>
+              <button class="danger-button" id="disconnect-sheet" type="button">연결 해제</button>
+            </div>
+          </form>
+
+          <section class="panel setup-panel">
+            <div class="panel-heading">
+              <h3>시트 준비 순서</h3>
+            </div>
+            <ol class="setup-list">
+              <li>구글시트 첫 줄에 생성일, 유형, 장소명, 위치, 상태, 태그, 내용, 담당자, 연락처를 적습니다.</li>
+              <li>확장 프로그램에서 Apps Script를 열고 접수 코드를 붙여넣습니다.</li>
+              <li>웹 앱으로 배포한 뒤 /exec로 끝나는 URL을 위에 저장합니다.</li>
+            </ol>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <template id="record-template">
+      <article class="record-card">
+        <div class="record-main">
+          <div>
+            <p class="record-kicker"></p>
+            <h3></h3>
+            <p class="record-location"></p>
+          </div>
+          <span class="status-pill"></span>
         </div>
-      </label>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">신청자 정보</div>
-    <div class="field">
-      <label class="field-label">연락처<span class="req">*</span></label>
-      <input type="tel" id="a_phone" placeholder="예) 010-1234-5678" />
-    </div>
-    <div class="field">
-      <label class="field-label">요청 메모<span class="opt">(선택)</span></label>
-      <textarea id="a_memo" placeholder="추가로 전달하고 싶은 내용을 적어주세요."></textarea>
-    </div>
-  </div>
-  <button class="submit-btn" id="apply-btn" onclick="submitApply()">신청 제출하기</button>
-  <div id="apply-toast" class="toast"></div>
-</div>
- 
-<!-- 모니터링 기록 -->
-<div id="monitor" class="section">
-  <div class="notice">모니터링단 전용 화면입니다.<br>현장에서 점검한 내용을 기록해 주세요.</div>
-  <div class="card">
-    <div class="card-title">장소 정보</div>
-    <div class="field">
-      <label class="field-label">장소명<span class="req">*</span></label>
-      <input type="text" id="m_place" placeholder="예) 삼청로 카페거리" />
-    </div>
-    <div class="field">
-      <label class="field-label">주소<span class="req">*</span></label>
-      <input type="text" id="m_addr" placeholder="예) 서울시 종로구 삼청로 12" />
-    </div>
-    <div class="field">
-      <label class="field-label">모니터링 날짜<span class="req">*</span></label>
-      <input type="date" id="m_date" />
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">항목별 평가</div>
-    <div class="field">
-      <label class="field-label">점자메뉴판 구비 여부</label>
-      <div class="rating-group" id="rg_r1">
-        <button class="rating-btn" onclick="setRating('m_r1','rg_r1',this,'good')">👍 좋음</button>
-        <button class="rating-btn" onclick="setRating('m_r1','rg_r1',this,'fair')">😐 보통</button>
-        <button class="rating-btn" onclick="setRating('m_r1','rg_r1',this,'poor')">👎 미흡</button>
-      </div>
-      <input type="hidden" id="m_r1" />
-    </div>
-    <div class="field">
-      <label class="field-label">경사로 및 출입 접근성</label>
-      <div class="rating-group" id="rg_r2">
-        <button class="rating-btn" onclick="setRating('m_r2','rg_r2',this,'good')">👍 좋음</button>
-        <button class="rating-btn" onclick="setRating('m_r2','rg_r2',this,'fair')">😐 보통</button>
-        <button class="rating-btn" onclick="setRating('m_r2','rg_r2',this,'poor')">👎 미흡</button>
-      </div>
-      <input type="hidden" id="m_r2" />
-    </div>
-    <div class="field">
-      <label class="field-label">화장실 접근성</label>
-      <div class="rating-group" id="rg_r3">
-        <button class="rating-btn" onclick="setRating('m_r3','rg_r3',this,'good')">👍 좋음</button>
-        <button class="rating-btn" onclick="setRating('m_r3','rg_r3',this,'fair')">😐 보통</button>
-        <button class="rating-btn" onclick="setRating('m_r3','rg_r3',this,'poor')">👎 미흡</button>
-      </div>
-      <input type="hidden" id="m_r3" />
-    </div>
-    <div class="field">
-      <label class="field-label">안내판·표지판 가독성</label>
-      <div class="rating-group" id="rg_r4">
-        <button class="rating-btn" onclick="setRating('m_r4','rg_r4',this,'good')">👍 좋음</button>
-        <button class="rating-btn" onclick="setRating('m_r4','rg_r4',this,'fair')">😐 보통</button>
-        <button class="rating-btn" onclick="setRating('m_r4','rg_r4',this,'poor')">👎 미흡</button>
-      </div>
-      <input type="hidden" id="m_r4" />
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">현장 사진</div>
-    <div class="photo-drop" onclick="document.getElementById('m_photos').click()">
-      <div class="drop-icon">📷</div>
-      <p>탭해서 사진 추가하기</p>
-      <small>최대 6장</small>
-    </div>
-    <input type="file" id="m_photos" accept="image/*" multiple style="display:none" onchange="previewPhotos(this)" />
-    <div class="photo-grid" id="photo-grid"></div>
-  </div>
-  <div class="card">
-    <div class="card-title">종합 의견</div>
-    <div class="field">
-      <label class="field-label">조치 필요 여부</label>
-      <div class="pill-group">
-        <button class="pill" id="pill_yes"    onclick="selectPill('yes')">🚨 조치 필요</button>
-        <button class="pill" id="pill_no"     onclick="selectPill('no')">✅ 양호</button>
-        <button class="pill" id="pill_follow" onclick="selectPill('follow')">🕐 추후 확인</button>
-      </div>
-      <input type="hidden" id="m_action" />
-    </div>
-    <div class="field">
-      <label class="field-label">종합 의견<span class="req">*</span></label>
-      <textarea id="m_comment" placeholder="전반적인 점검 소감, 개선이 필요한 부분, 잘 된 점 등을 자유롭게 적어주세요." style="min-height:110px"></textarea>
-    </div>
-    <div class="field">
-      <label class="field-label">기록자 이름<span class="opt">(선택)</span></label>
-      <input type="text" id="m_author" placeholder="예) 홍길동" />
-    </div>
-  </div>
-  <button class="submit-btn" id="monitor-btn" onclick="submitMonitor()">기록 제출하기</button>
-  <div id="monitor-toast" class="toast"></div>
-</div>
- 
-<!-- 전체 기록 -->
-<div id="records" class="section">
-  <div class="card" style="margin-bottom:14px">
-    <div style="display:flex;gap:8px;align-items:center">
-      <select id="filter-type" onchange="renderRecords()" style="flex:1">
-        <option value="">전체 유형</option>
-        <option value="apply">보급 신청</option>
-        <option value="monitor">모니터링</option>
-      </select>
-      <select id="filter-action" onchange="renderRecords()" style="flex:1">
-        <option value="">전체 상태</option>
-        <option value="조치 필요">조치 필요</option>
-        <option value="양호">양호</option>
-        <option value="추후 확인">추후 확인</option>
-      </select>
-    </div>
-  </div>
-  <div id="records-list"></div>
-</div>
- 
-<!-- 지도 -->
-<div id="map" class="section">
-  <div class="notice">신청이 접수된 상점 위치를 지도에서 확인할 수 있어요.<br>주소가 입력된 신청 기록만 표시됩니다.</div>
-  <div id="kakao-map" style="width:100%;height:420px;border-radius:12px;border:1px solid var(--border);margin-bottom:14px;"></div>
-  <div class="card">
-    <div class="card-title">신청 목록</div>
-    <div id="map-list"></div>
-  </div>
-</div>
- 
-<!-- 설정 -->
-<div id="settings" class="section">
-  <div class="card">
-    <div class="card-title">Google 시트 연결</div>
-    <div id="sheet-status" class="settings-status connected">✅ 시트가 연결되어 있어요</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-top:8px">신청 및 모니터링 기록이 Google 시트에 자동으로 저장됩니다.</p>
-    <button class="sec-btn" onclick="testSheet()" style="margin-top:12px">테스트 전송</button>
-    <div id="settings-toast" class="toast" style="margin-top:10px"></div>
-  </div>
-</div>
- 
-<script>
-// ── 설정 ──────────────────────────────────────────
-const MONITOR_PIN = '7051';
-let SCRIPT_URL = localStorage.getItem('scriptUrl') || 'https://script.google.com/macros/s/AKfycbxBQWn2adwedy94MWxF3NGjyEnnMHde4vm-6VRXP1PEVGr6mDKQbQm7RFG3vnmrcAQ4/exec';
- 
-// ── 로컬 스토리지 데이터 ──────────────────────────
-function getRecords() { return JSON.parse(localStorage.getItem('records') || '[]'); }
-function saveRecord(rec) {
-  const records = getRecords();
-  records.unshift(rec);
-  localStorage.setItem('records', JSON.stringify(records));
-  updateDashboard();
-}
- 
-// ── 탭 전환 ──────────────────────────────────────
-function switchTab(id, el) {
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  el.classList.add('active');
-  if (id === 'records') renderRecords();
-  if (id === 'home') updateDashboard();
-  if (id === 'settings') loadSettingsUI();
-  if (id === 'map') initMap();
-}
- 
-// ── PIN 잠금 ──────────────────────────────────────
-let pinValue = '', monitorUnlocked = false, pendingTabEl = null;
- 
-function requirePin(el) {
-  if (monitorUnlocked) { switchTab('monitor', el); return; }
-  pendingTabEl = el;
-  pinValue = '';
-  updateDots();
-  document.getElementById('lock-error').textContent = '';
-  document.getElementById('lock-screen').classList.add('show');
-}
-function pinInput(num) {
-  if (pinValue.length >= 4) return;
-  pinValue += num; updateDots();
-  if (pinValue.length === 4) setTimeout(checkPin, 120);
-}
-function pinDelete() { pinValue = pinValue.slice(0, -1); updateDots(); document.getElementById('lock-error').textContent = ''; }
-function updateDots() {
-  for (let i = 0; i < 4; i++) {
-    const d = document.getElementById('dot' + i);
-    d.classList.toggle('filled', i < pinValue.length);
-    d.classList.remove('error');
-  }
-}
-function closeLock() {
-  document.getElementById('lock-screen').classList.remove('show');
-  pinValue = '';
-  updateDots();
-}
- 
-function checkPin() {
-  if (pinValue === MONITOR_PIN) {
-    monitorUnlocked = true;
-    document.getElementById('lock-screen').classList.remove('show');
-    switchTab('monitor', pendingTabEl);
-  } else {
-    for (let i = 0; i < 4; i++) document.getElementById('dot' + i).classList.add('error');
-    document.getElementById('lock-error').textContent = '비밀번호가 맞지 않아요. 다시 시도해 주세요.';
-    setTimeout(() => { pinValue = ''; updateDots(); }, 800);
-  }
-}
- 
-// ── 평가 / 필 ─────────────────────────────────────
-function setRating(fieldId, groupId, btn, level) {
-  document.getElementById(groupId).querySelectorAll('.rating-btn').forEach(b => b.classList.remove('sel-good','sel-fair','sel-poor'));
-  btn.classList.add('sel-' + level);
-  document.getElementById(fieldId).value = level === 'good' ? '좋음' : level === 'fair' ? '보통' : '미흡';
-}
-function selectPill(val) {
-  ['yes','no','follow'].forEach(v => { const el = document.getElementById('pill_' + v); el.className = 'pill'; if (v === val) el.classList.add('active-' + v); });
-  document.getElementById('m_action').value = val === 'yes' ? '조치 필요' : val === 'no' ? '양호' : '추후 확인';
-}
-function previewPhotos(input) {
-  const grid = document.getElementById('photo-grid'); grid.innerHTML = '';
-  Array.from(input.files).slice(0, 6).forEach(file => {
-    const img = document.createElement('img'); img.className = 'photo-thumb'; img.src = URL.createObjectURL(file); grid.appendChild(img);
-  });
-}
- 
-// ── 토스트 / 로딩 ─────────────────────────────────
-function showToast(id, msg, type) {
-  const el = document.getElementById(id); el.textContent = msg; el.className = 'toast ' + type;
-  setTimeout(() => { el.className = 'toast'; }, 5000);
-}
-function setLoading(btnId, loading, label) {
-  const btn = document.getElementById(btnId);
-  btn.disabled = loading;
-  btn.innerHTML = loading ? '<span class="loading-spinner"></span>전송 중...' : label;
-}
- 
-// ── 신청 제출 ─────────────────────────────────────
-async function submitApply() {
-  const name = document.getElementById('a_name').value.trim();
-  const addr = document.getElementById('a_addr').value.trim();
-  const phone = document.getElementById('a_phone').value.trim();
-  const braille = document.getElementById('a_braille').checked;
-  const ramp = document.getElementById('a_ramp').checked;
-  const memo = document.getElementById('a_memo').value.trim();
-  if (!name) { showToast('apply-toast','상호명을 입력해 주세요.','error'); return; }
-  if (!addr) { showToast('apply-toast','주소를 입력해 주세요.','error'); return; }
-  if (!phone) { showToast('apply-toast','연락처를 입력해 주세요.','error'); return; }
-  if (!braille && !ramp) { showToast('apply-toast','신청 항목을 하나 이상 선택해 주세요.','error'); return; }
-  const items = [braille && '점자메뉴판', ramp && '경사로'].filter(Boolean).join(', ');
-  const ts = new Date().toLocaleString('ko-KR');
-  setLoading('apply-btn', true, '신청 제출하기');
-  try {
-    await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body: JSON.stringify({type:'apply', name, addr, items, phone, memo, timestamp: ts}), headers:{'Content-Type':'application/json'} });
-  } catch(e) {}
-  saveRecord({ type:'apply', name, addr, items, phone, memo, timestamp: ts });
-  showToast('apply-toast','✅ 신청이 접수되었습니다. 담당자가 확인 후 연락드릴게요!','success');
-  ['a_name','a_addr','a_phone','a_memo'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('a_braille').checked = false;
-  document.getElementById('a_ramp').checked = false;
-  setLoading('apply-btn', false, '신청 제출하기');
-}
- 
-// ── 모니터링 제출 ──────────────────────────────────
-async function submitMonitor() {
-  const place = document.getElementById('m_place').value.trim();
-  const addr = document.getElementById('m_addr').value.trim();
-  const date = document.getElementById('m_date').value;
-  const comment = document.getElementById('m_comment').value.trim();
-  const r1 = document.getElementById('m_r1').value;
-  const r2 = document.getElementById('m_r2').value;
-  const r3 = document.getElementById('m_r3').value;
-  const r4 = document.getElementById('m_r4').value;
-  const action = document.getElementById('m_action').value;
-  const author = document.getElementById('m_author').value.trim();
-  if (!place) { showToast('monitor-toast','장소명을 입력해 주세요.','error'); return; }
-  if (!addr)  { showToast('monitor-toast','주소를 입력해 주세요.','error'); return; }
-  if (!date)  { showToast('monitor-toast','날짜를 선택해 주세요.','error'); return; }
-  if (!comment) { showToast('monitor-toast','종합 의견을 입력해 주세요.','error'); return; }
-  const ts = new Date().toLocaleString('ko-KR');
-  setLoading('monitor-btn', true, '기록 제출하기');
-  try {
-    await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body: JSON.stringify({type:'monitor', place, addr, date, r1, r2, r3, r4, action, comment, author, timestamp: ts}), headers:{'Content-Type':'application/json'} });
-  } catch(e) {}
-  saveRecord({ type:'monitor', name: place, addr, date, r1, r2, r3, r4, action, comment, author, timestamp: ts });
-  showToast('monitor-toast','✅ 기록이 저장되었습니다!','success');
-  setLoading('monitor-btn', false, '기록 제출하기');
-}
- 
-// ── 대시보드 ──────────────────────────────────────
-function updateDashboard() {
-  const records = getRecords();
-  document.getElementById('st-total').textContent = records.length;
-  document.getElementById('st-action').textContent = records.filter(r => r.action === '조치 필요').length;
-  document.getElementById('st-apply').textContent = records.filter(r => r.type === 'apply').length;
-  document.getElementById('st-good').textContent = records.filter(r => r.action === '양호').length;
-  const recent = records.slice(0, 5);
-  const el = document.getElementById('recent-list');
-  if (recent.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>아직 기록이 없어요</div>'; return; }
-  el.innerHTML = recent.map(r => recordCard(r)).join('');
-}
- 
-// ── 홈 카드 클릭 → 기록 탭 이동 ─────────────────────
-function goToRecords(type, action) {
-  const tab = document.querySelector('.tab:nth-child(4)');
-  switchTab('records', tab);
-  document.getElementById('filter-type').value = type;
-  document.getElementById('filter-action').value = action;
-  renderRecords();
-}
- 
-// ── 전체 기록 ─────────────────────────────────────
-function renderRecords() {
-  const filterType = document.getElementById('filter-type').value;
-  const filterAction = document.getElementById('filter-action').value;
-  let records = getRecords();
-  if (filterType) records = records.filter(r => r.type === filterType);
-  if (filterAction) records = records.filter(r => r.action === filterAction);
-  const el = document.getElementById('records-list');
-  if (records.length === 0) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div>해당하는 기록이 없어요</div>'; return; }
-  el.innerHTML = records.map(r => recordCard(r)).join('');
-}
- 
-function recordCard(r) {
-  const typeTag = r.type === 'apply'
-    ? '<span class="tag tag-apply">보급 신청</span>'
-    : '<span class="tag tag-monitor">모니터링</span>';
-  const actionTag = r.action === '조치 필요' ? '<span class="tag tag-action">조치 필요</span>'
-    : r.action === '양호' ? '<span class="tag tag-good">양호</span>'
-    : r.action === '추후 확인' ? '<span class="tag tag-fair">추후 확인</span>' : '';
-  const itemsTag = r.items ? `<span class="tag" style="background:#f0fdf4;color:#166534">${r.items}</span>` : '';
-  return `<div class="record-item">
-    <div class="rec-top"><span class="rec-name">${r.name}</span><span class="rec-date">${r.timestamp}</span></div>
-    <div class="rec-addr">${r.addr}</div>
-    <div class="rec-tags">${typeTag}${actionTag}${itemsTag}</div>
-  </div>`;
-}
- 
-// ── 설정 ─────────────────────────────────────────
-function loadSettingsUI() {
-  // URL 고정 — 변경 불필요
-}
-function saveSheetUrl() {}
-async function testSheet() {
-  try {
-    await fetch(SCRIPT_URL, { method:'POST', mode:'no-cors', body: JSON.stringify({type:'test', timestamp: new Date().toLocaleString('ko-KR')}), headers:{'Content-Type':'application/json'} });
-    showToast('settings-toast','✅ 테스트 전송 완료! 시트를 확인해 보세요.','success');
-  } catch(e) { showToast('settings-toast','전송 실패. URL을 확인해 주세요.','error'); }
-}
- 
- 
- 
-// ── 지도 ─────────────────────────────────────────
-let mapInstance = null;
-let mapMarkers = [];
- 
-function initMap() {
-  if (window.kakaoMapReady) {
-    renderMap();
-  } else {
-    window.pendingMapRender = renderMap;
-  }
-}
- 
-function renderMap() {
-  {
-    const records = getRecords().filter(r => r.type === 'apply' && r.addr);
-    const container = document.getElementById('kakao-map');
- 
-    // 지도 초기화 (종로구 중심)
-    const options = { center: new kakao.maps.LatLng(37.5726, 126.9793), level: 5 };
-    if (!mapInstance) {
-      mapInstance = new kakao.maps.Map(container, options);
-    } else {
-      mapInstance.relayout();
-    }
- 
-    // 기존 마커 제거
-    mapMarkers.forEach(m => m.setMap(null));
-    mapMarkers = [];
- 
-    // 목록 렌더링
-    const listEl = document.getElementById('map-list');
-    if (records.length === 0) {
-      listEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div>아직 신청 기록이 없어요</div>';
-      return;
-    }
- 
-    const geocoder = new kakao.maps.services.Geocoder();
-    listEl.innerHTML = '';
- 
-    records.forEach((rec, idx) => {
-      // 목록 아이템
-      const item = document.createElement('div');
-      item.className = 'record-item';
-      item.style.cursor = 'pointer';
-      item.innerHTML = `
-        <div class="rec-top"><span class="rec-name">📍 ${rec.name}</span><span class="rec-date">${rec.timestamp}</span></div>
-        <div class="rec-addr">${rec.addr}</div>
-        <div class="rec-tags"><span class="tag" style="background:#e0f2fe;color:#0369a1">${rec.items || ''}</span></div>`;
-      listEl.appendChild(item);
- 
-      // 주소 → 좌표 변환 후 마커
-      geocoder.addressSearch(rec.addr, function(result, status) {
-        if (status === kakao.maps.services.Status.OK) {
-          const coords = new kakao.maps.LatLng(result[0].y, result[0].x);
-          const marker = new kakao.maps.Marker({ map: mapInstance, position: coords });
-          mapMarkers.push(marker);
- 
-          // 인포윈도우
-          const info = new kakao.maps.InfoWindow({
-            content: `<div style="padding:8px 12px;font-size:13px;font-family:'Noto Sans KR',sans-serif;min-width:120px"><strong>${rec.name}</strong><br><span style="color:#6b7280;font-size:12px">${rec.items || ''}</span></div>`
-          });
-          kakao.maps.event.addListener(marker, 'click', function() { info.open(mapInstance, marker); });
- 
-          // 목록 클릭 시 해당 위치로 이동
-          item.addEventListener('click', function() {
-            mapInstance.setCenter(coords);
-            mapInstance.setLevel(3);
-            info.open(mapInstance, marker);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          });
-        }
-      });
-    });
-  }
-}
- 
-// ── 초기화 ────────────────────────────────────────
- 
-// 샘플 데이터 (처음 실행 시 한 번만)
-function loadSampleData() {
-  if (localStorage.getItem('sampleLoaded')) return;
-  const samples = [
-    {
-      type: 'apply', name: '삼청동 수제비', addr: '서울 종로구 삼청로 101',
-      items: '점자메뉴판', phone: '02-123-4567', memo: '단골 시각장애인 손님이 계세요',
-      timestamp: '2026. 5. 20. 오전 10:30:00', action: ''
-    },
-    {
-      type: 'apply', name: '인사동 쌈지길 카페', addr: '서울 종로구 인사동길 44',
-      items: '경사로', phone: '02-234-5678', memo: '입구 턱이 높아서 휠체어 진입이 어려워요',
-      timestamp: '2026. 5. 21. 오후 2:15:00', action: ''
-    },
-    {
-      type: 'apply', name: '낙원상가 분식집', addr: '서울 종로구 삼일대로 428',
-      items: '점자메뉴판, 경사로', phone: '010-3456-7890', memo: '',
-      timestamp: '2026. 5. 22. 오전 11:00:00', action: ''
-    },
-    {
-      type: 'monitor', name: '통인시장 입구', addr: '서울 종로구 자하문로15길 18',
-      date: '2026-05-23', r1: '미흡', r2: '보통', r3: '미흡', r4: '보통',
-      action: '조치 필요', comment: '점자메뉴판 없는 가게가 대부분이고, 일부 입구에 턱이 있어 휠체어 진입 어려움. 화장실 접근성도 개선 필요.',
-      author: '김모니터', timestamp: '2026. 5. 23. 오후 3:00:00'
-    },
-    {
-      type: 'monitor', name: '북촌한옥마을 카페거리', addr: '서울 종로구 북촌로 31',
-      date: '2026-05-24', r1: '보통', r2: '좋음', r3: '좋음', r4: '좋음',
-      action: '양호', comment: '경사로 설치가 잘 되어 있고 안내판도 읽기 쉬움. 점자메뉴판은 일부 카페만 구비.',
-      author: '이모니터', timestamp: '2026. 5. 24. 오전 10:00:00'
-    },
-    {
-      type: 'monitor', name: '광화문 교보빌딩 앞 상가', addr: '서울 종로구 종로 1',
-      date: '2026-05-25', r1: '미흡', r2: '좋음', r3: '좋음', r4: '좋음',
-      action: '추후 확인', comment: '건물 접근성은 우수하나 내부 상가 점자메뉴판 미비. 담당자 연락 후 추후 확인 예정.',
-      author: '박모니터', timestamp: '2026. 5. 25. 오후 1:30:00'
-    }
-  ];
-  // 역순으로 넣어야 최신순 정렬
-  const existing = getRecords();
-  localStorage.setItem('records', JSON.stringify([...samples.reverse(), ...existing]));
-  localStorage.setItem('sampleLoaded', 'true');
-}
- 
-document.getElementById('m_date').valueAsDate = new Date();
-loadSampleData();
-updateDashboard();
-loadSettingsUI();
-</script>
-<script>
-// 카카오맵 SDK 동적 로드
-window.kakaoMapReady = false;
-(function() {
-  const s = document.createElement('script');
-  s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=80997111825554ef64ddb0481b4c0a76&libraries=services&autoload=false';
-  s.addEventListener('load', function() {
-    kakao.maps.load(function() {
-      window.kakaoMapReady = true;
-      if (window.pendingMapRender) { window.pendingMapRender(); }
-    });
-  });
-  document.head.appendChild(s);
-})();
-</script>
-</body>
+        <p class="record-body"></p>
+        <div class="tag-row"></div>
+        <div class="record-actions">
+          <button class="small-button" data-action="toggle" type="button">상태 변경</button>
+          <button class="small-button danger-text" data-action="delete" type="button">삭제</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
 </html>
- 
