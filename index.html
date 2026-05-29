@@ -609,13 +609,10 @@ let mapInstance = null;
 let mapMarkers = [];
  
 function initMap() {
-  if (typeof kakao === 'undefined') {
-    const script = document.createElement('script');
-    script.src = '//dapi.kakao.com/v2/maps/sdk.js?appkey=80997111825554ef64ddb0481b4c0a76&libraries=services';
-    script.onload = function() { renderMap(); };
-    document.head.appendChild(script);
-  } else {
+  if (window.kakaoMapReady) {
     renderMap();
+  } else {
+    window.pendingMapRender = renderMap;
   }
 }
  
@@ -733,6 +730,21 @@ document.getElementById('m_date').valueAsDate = new Date();
 loadSampleData();
 updateDashboard();
 loadSettingsUI();
+</script>
+<script>
+// 카카오맵 SDK 동적 로드
+window.kakaoMapReady = false;
+(function() {
+  const s = document.createElement('script');
+  s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=80997111825554ef64ddb0481b4c0a76&libraries=services&autoload=false';
+  s.addEventListener('load', function() {
+    kakao.maps.load(function() {
+      window.kakaoMapReady = true;
+      if (window.pendingMapRender) { window.pendingMapRender(); }
+    });
+  });
+  document.head.appendChild(s);
+})();
 </script>
 </body>
 </html>
