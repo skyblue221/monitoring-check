@@ -169,6 +169,7 @@
       <button class="pin-key del" onclick="pinDelete()">지우기</button>
     </div>
     <div class="lock-error" id="lock-error"></div>
+    <button onclick="closeLock()" style="margin-top:16px;background:none;border:none;font-family:'Noto Sans KR',sans-serif;font-size:13px;color:var(--text-muted);cursor:pointer;text-decoration:underline;">취소</button>
   </div>
 </div>
  
@@ -442,6 +443,12 @@ function updateDots() {
     d.classList.remove('error');
   }
 }
+function closeLock() {
+  document.getElementById('lock-screen').classList.remove('show');
+  pinValue = '';
+  updateDots();
+}
+ 
 function checkPin() {
   if (pinValue === MONITOR_PIN) {
     monitorUnlocked = true;
