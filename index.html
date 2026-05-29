@@ -1182,12 +1182,6 @@ fieldset input {
                 <option>조치 필요</option>
               </select>
             </label>
-            <fieldset class="wide score-group">
-              <legend>추가 표시</legend>
-              <label><input type="checkbox" name="checks" value="쉬운 안내판 필요" /> 쉬운 안내판 필요</label>
-              <label><input type="checkbox" name="checks" value="직원 응대 좋음" /> 직원 응대 좋음</label>
-              <label><input type="checkbox" name="checks" value="후속 조치 필요" /> 후속 조치 필요</label>
-            </fieldset>
             <fieldset class="wide evaluation-group">
               <legend>항목별 평가</legend>
               <div class="eval-row" data-eval-row>
@@ -1214,6 +1208,11 @@ fieldset input {
                 <label><input type="radio" name="eval_signage" value="보통" /> 보통</label>
                 <label><input type="radio" name="eval_signage" value="미흡" /> 미흡</label>
               </div>
+            </fieldset>
+            <fieldset class="wide score-group">
+              <legend>추가 표시</legend>
+              <label><input type="checkbox" name="checks" value="쉬운 안내판 필요" /> 쉬운 안내판 필요</label>
+              <label><input type="checkbox" name="checks" value="직원 응대 좋음" /> 직원 응대 좋음</label>
             </fieldset>
             <label class="wide">
               좋았던 점
@@ -1652,7 +1651,7 @@ function renderMapRecords() {
 }
 
 function renderTypeChart() {
-  const labels = ["점자메뉴판 필요", "경사로 필요", "쉬운 안내판 필요", "직원 응대 좋음", "후속 조치 필요"];
+  const labels = ["점자메뉴판 필요", "경사로 필요", "쉬운 안내판 필요", "직원 응대 좋음"];
   const counts = labels.map((label) => ({
     label,
     count: records.filter((record) => recordTags(record).includes(label)).length,
@@ -1983,7 +1982,7 @@ function sampleRecords() {
       placeType: "음식점/카페",
       address: "서울 종로구 인사동길 49",
       district: "종로1·2·3·4가동",
-      checks: ["점자메뉴판 필요", "직원 응대 좋음", "후속 조치 필요"],
+      checks: ["점자메뉴판 필요", "직원 응대 좋음"],
       reporter: "1조 모니터링단",
       visitDate: new Date().toISOString().slice(0, 10),
       positive: "직원이 입구 안내를 빠르게 도와주고 내부 동선이 넓었습니다.",
