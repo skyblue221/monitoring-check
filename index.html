@@ -3,285 +3,359 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>모니터링단 접근성 기록함</title>
+    <title>배리어프리 마을 만들기</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="주요 메뉴">
+      <aside class="sidebar" aria-label="앱 메뉴">
         <div class="brand">
-          <div class="brand-mark" aria-hidden="true">M</div>
+          <span class="brand-mark" aria-hidden="true">M</span>
           <div>
-            <h1>모니터링단</h1>
-            <p>접근성 기록함</p>
+            <strong>배리어프리 마을 만들기</strong>
+            <span>메뉴판 · 경사로 신청 및 모니터링 기록</span>
           </div>
         </div>
 
-        <nav class="nav-list" aria-label="화면 전환">
-          <button class="nav-item active" data-view="dashboard" type="button">
+        <nav class="tabs" aria-label="주요 화면">
+          <button class="tab-button active" type="button" data-view="dashboard">
             <span aria-hidden="true">⌂</span>
             현황
           </button>
-          <button class="nav-item" data-view="monitoring" type="button">
+          <button class="tab-button" type="button" data-view="request">
+            <span aria-hidden="true">＋</span>
+            신청하기
+          </button>
+          <button class="tab-button" type="button" data-view="monitor">
             <span aria-hidden="true">□</span>
             모니터링 기록
           </button>
-          <button class="nav-item" data-view="request" type="button">
-            <span aria-hidden="true">＋</span>
-            보급 신청
-          </button>
-          <button class="nav-item" data-view="list" type="button">
-            <span aria-hidden="true">≡</span>
+          <button class="tab-button" type="button" data-view="records">
+            <span aria-hidden="true">☰</span>
             전체 기록
           </button>
-          <button class="nav-item" data-view="settings" type="button">
+          <button class="tab-button" type="button" data-view="map">
+            <span aria-hidden="true">⌖</span>
+            지도
+          </button>
+          <button class="tab-button" type="button" data-view="sheet">
             <span aria-hidden="true">⚙</span>
             시트 연결
           </button>
         </nav>
+
+        <section class="quick-stats" aria-label="요약 현황">
+          <div>
+            <span id="totalCount">0</span>
+            <small>전체 기록</small>
+          </div>
+          <div>
+            <span id="needsActionCount">0</span>
+            <small>조치 필요</small>
+          </div>
+        </section>
       </aside>
 
-      <main class="main">
-        <section class="topbar">
+      <main>
+        <header class="topbar">
           <div>
             <p class="eyebrow">현장 기록 · 신청 · 후속 조치</p>
-            <h2 id="view-title">오늘의 접근성 현황</h2>
+            <h1 id="pageTitle">오늘의 접근성 현황</h1>
           </div>
-          <div class="topbar-actions">
-            <button class="ghost-button" id="export-csv" type="button">CSV 내보내기</button>
-            <button class="danger-button" id="clear-data" type="button">초기화</button>
+          <div class="top-actions">
+            <button class="ghost-button" id="sampleButton" type="button">샘플 기록 넣기</button>
+            <button class="secondary-button" id="exportButton" type="button">CSV 내보내기</button>
+            <button class="danger-button" id="clearButton" type="button">담당자 초기화</button>
           </div>
-        </section>
+        </header>
 
-        <section class="view active" id="dashboard" aria-labelledby="view-title">
-          <div class="stats-grid" aria-label="요약 통계">
-            <article class="stat-panel">
-              <p>전체 기록</p>
-              <strong id="stat-total">0</strong>
+        <section class="view active" id="dashboardView" aria-labelledby="dashboardTitle">
+          <h2 class="sr-only" id="dashboardTitle">오늘의 접근성 현황</h2>
+          <div class="metric-grid" aria-label="기록 요약">
+            <article class="metric-card">
+              <span>전체 기록</span>
+              <strong id="metricTotal">0</strong>
             </article>
-            <article class="stat-panel">
-              <p>보급 신청</p>
-              <strong id="stat-request">0</strong>
+            <article class="metric-card metric-link" data-metric-filter="requests" role="button" tabindex="0">
+              <span>신청 접수</span>
+              <strong id="metricRequests">0</strong>
             </article>
-            <article class="stat-panel">
-              <p>조치 필요</p>
-              <strong id="stat-action">0</strong>
+            <article class="metric-card metric-link" data-metric-filter="action" role="button" tabindex="0">
+              <span>조치 필요</span>
+              <strong id="metricAction">0</strong>
             </article>
-            <article class="stat-panel">
-              <p>좋은 사례</p>
-              <strong id="stat-good">0</strong>
+            <article class="metric-card metric-link" data-metric-filter="good" role="button" tabindex="0">
+              <span>좋은 사례</span>
+              <strong id="metricGood">0</strong>
             </article>
           </div>
 
-          <div class="dashboard-layout">
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>최근 기록</h3>
-                <button class="text-button" data-view-jump="list" type="button">전체 보기</button>
+          <div class="dashboard-grid">
+            <section class="panel recent-panel" aria-labelledby="recentTitle">
+              <div class="panel-head">
+                <h2 id="recentTitle">최근 기록</h2>
+                <button class="link-button" type="button" data-view-jump="records">전체 보기</button>
               </div>
-              <div class="record-list compact" id="recent-records"></div>
+              <div class="records compact" id="recentRecordsList" aria-live="polite"></div>
             </section>
 
-            <section class="panel">
-              <div class="panel-heading">
-                <h3>유형별 현황</h3>
-              </div>
-              <div class="type-bars" id="type-bars"></div>
+            <section class="panel chart-panel" aria-labelledby="chartTitle">
+              <h2 id="chartTitle">유형별 현황</h2>
+              <div class="bar-list" id="typeChart"></div>
             </section>
           </div>
         </section>
 
-        <section class="view" id="monitoring" aria-labelledby="view-title">
-          <form class="form-grid" id="monitoring-form">
-            <div class="form-section full">
-              <h3>모니터링 기록</h3>
+        <section class="view" id="requestView" aria-labelledby="requestTitle">
+          <div class="panel intro-panel">
+            <div>
+              <h2 id="requestTitle">여기도 있으면 좋겠어요</h2>
+              <p>지역주민 누구나 점자메뉴판과 경사로가 필요한 장소를 알려줄 수 있어요. 경사로는 올해 6개 상점만 우선 지원할 수 있습니다.</p>
             </div>
+            <div class="status-pill">경사로 잔여 <span id="rampRemaining">6</span>곳</div>
+          </div>
 
+          <form class="form-grid panel" id="requestForm">
             <label>
-              장소명
-              <input name="place" type="text" placeholder="예: 은평구 행복식당" required />
-            </label>
-            <label>
-              주소 또는 위치
-              <input name="location" type="text" placeholder="예: 서울 은평구 ○○로 12" />
+              장소 이름
+              <input name="placeName" required placeholder="예: 달빛분식, ○○도서관" />
             </label>
             <label>
-              방문일
-              <input name="date" type="date" required />
-            </label>
-            <label>
-              모니터링 담당자
-              <input name="owner" type="text" placeholder="이름 또는 팀명" />
-            </label>
-
-            <fieldset class="full">
-              <legend>확인 항목</legend>
-              <div class="check-grid">
-                <label><input name="hasBrailleMenu" type="checkbox" /> 점자메뉴판 있음</label>
-                <label><input name="needsBrailleMenu" type="checkbox" /> 점자메뉴판 필요</label>
-                <label><input name="hasRamp" type="checkbox" /> 경사로 있음</label>
-                <label><input name="needsRamp" type="checkbox" /> 경사로 필요</label>
-                <label><input name="staffHelpful" type="checkbox" /> 직원 응대 좋음</label>
-                <label><input name="actionNeeded" type="checkbox" /> 후속 조치 필요</label>
-              </div>
-            </fieldset>
-
-            <label class="full">
-              좋은 점
-              <textarea name="good" rows="4" placeholder="접근이 편했던 점, 응대가 좋았던 점 등을 적어주세요."></textarea>
-            </label>
-            <label class="full">
-              부족한 점과 필요한 조치
-              <textarea name="issue" rows="5" placeholder="예: 입구 턱이 높아 이동이 어렵고, 임시 경사로 설치가 필요합니다."></textarea>
-            </label>
-
-            <div class="form-actions full">
-              <button class="primary-button" type="submit">기록 저장</button>
-            </div>
-          </form>
-        </section>
-
-        <section class="view" id="request" aria-labelledby="view-title">
-          <form class="form-grid" id="request-form">
-            <div class="form-section full">
-              <h3>점자메뉴판 · 경사로 보급 신청</h3>
-            </div>
-
-            <label>
-              신청 장소명
-              <input name="place" type="text" placeholder="예: 우리동네 김밥" required />
-            </label>
-            <label>
-              주소 또는 위치
-              <input name="location" type="text" placeholder="방문자가 찾을 수 있는 위치" required />
-            </label>
-            <label>
-              신청 품목
-              <select name="requestType" required>
+              장소 유형
+              <select name="placeType" required>
                 <option value="">선택</option>
-                <option value="점자메뉴판">점자메뉴판</option>
-                <option value="경사로">경사로</option>
-                <option value="점자메뉴판, 경사로">점자메뉴판, 경사로</option>
-                <option value="기타 접근성 지원">기타 접근성 지원</option>
+                <option>음식점/카페</option>
+                <option>병원/약국</option>
+                <option>공공기관</option>
+                <option>문화시설</option>
+                <option>상점</option>
+                <option>기타</option>
               </select>
             </label>
-            <label>
-              우선순위
-              <select name="priority">
-                <option value="보통">보통</option>
-                <option value="높음">높음</option>
-                <option value="긴급">긴급</option>
-              </select>
+            <label class="wide">
+              주소 또는 위치 설명
+              <input name="address" required placeholder="도로명 주소나 찾기 쉬운 위치" />
             </label>
             <label>
-              신청자
-              <input name="owner" type="text" placeholder="이름 또는 연락 가능한 팀명" />
+              현장 사진
+              <input name="photo" type="file" accept="image/*" multiple />
+              <span class="helper-text">사진은 최대 5장까지 첨부할 수 있어요.</span>
+            </label>
+            <fieldset class="wide option-group">
+              <legend>있으면 좋은 것</legend>
+              <label><input type="checkbox" name="needs" value="점자메뉴판 필요" /> 점자메뉴판 필요</label>
+              <label><input type="checkbox" name="needs" value="경사로 필요" /> 경사로 필요</label>
+              <label><input type="checkbox" name="needs" value="쉬운 안내판 필요" /> 쉬운 안내판 필요</label>
+              <label><input type="checkbox" name="needs" value="기타 필요" /> 기타</label>
+            </fieldset>
+            <label class="wide">
+              기타 내용
+              <input name="otherNeed" placeholder="기타를 선택했다면 필요한 내용을 적어주세요." />
+            </label>
+            <label>
+              신청자 이름 또는 닉네임
+              <input name="reporter" placeholder="선택 입력" />
             </label>
             <label>
               연락처
-              <input name="contact" type="text" placeholder="선택 입력" />
+              <input name="contact" placeholder="선택 입력" />
             </label>
-            <label class="full">
-              신청 사유
-              <textarea name="reason" rows="6" placeholder="이곳에 있으면 좋은 이유와 실제 이용 상황을 적어주세요." required></textarea>
+            <label class="wide">
+              신청 이유
+              <textarea name="note" rows="4" placeholder="누가 어떤 상황에서 이용하기 어려웠나요?"></textarea>
             </label>
-
-            <div class="form-actions full">
-              <button class="primary-button" type="submit">신청 저장</button>
+            <div class="notice wide">
+              낮은 호출벨은 현재 보급 가능 물품이 아니어서 신청 항목에서 제외했습니다.
+            </div>
+            <div class="form-actions wide">
+              <button class="primary-button" type="submit">신청 접수</button>
+              <button class="ghost-button" type="reset">초기화</button>
             </div>
           </form>
         </section>
 
-        <section class="view" id="list" aria-labelledby="view-title">
-          <div class="filter-row">
+        <section class="view" id="monitorView" aria-labelledby="monitorTitle">
+          <div class="panel intro-panel">
+            <div>
+              <h2 id="monitorTitle">현장 모니터링 기록</h2>
+              <p>모니터링단만 작성할 수 있도록 간단한 비밀번호 확인 후 기록 화면이 열립니다.</p>
+            </div>
+            <button class="ghost-button" id="lockMonitorButton" type="button">잠그기</button>
+          </div>
+
+          <form class="gate-panel panel" id="monitorGate">
+            <label>
+              모니터링단 비밀번호
+              <input name="password" type="password" autocomplete="current-password" placeholder="비밀번호 입력" />
+              <span class="helper-text">비밀번호는 운영자가 별도로 공유합니다.</span>
+            </label>
+            <button class="primary-button" type="submit">기록 화면 열기</button>
+          </form>
+
+          <form class="form-grid panel hidden" id="monitorForm">
+            <label>
+              장소 이름
+              <input name="placeName" required placeholder="방문한 장소" />
+            </label>
+            <label>
+              방문일
+              <input name="visitDate" required type="date" />
+            </label>
+            <label class="wide">
+              주소 또는 위치 설명
+              <input name="address" placeholder="선택 입력, 도로명 주소나 찾기 쉬운 위치" />
+            </label>
+            <label>
+              행정동
+              <input name="district" placeholder="예: 종로1·2·3·4가동" />
+            </label>
+            <label>
+              모니터링단 이름
+              <input name="reporter" required placeholder="활동가 또는 팀명" />
+            </label>
+            <label>
+              접근성 상태
+              <select name="status" required>
+                <option value="">선택</option>
+                <option>좋음</option>
+                <option>일부 보완 필요</option>
+                <option>조치 필요</option>
+              </select>
+            </label>
+            <fieldset class="wide score-group">
+              <legend>추가 표시</legend>
+              <label><input type="checkbox" name="checks" value="쉬운 안내판 필요" /> 쉬운 안내판 필요</label>
+              <label><input type="checkbox" name="checks" value="직원 응대 좋음" /> 직원 응대 좋음</label>
+              <label><input type="checkbox" name="checks" value="후속 조치 필요" /> 후속 조치 필요</label>
+            </fieldset>
+            <fieldset class="wide evaluation-group">
+              <legend>항목별 평가</legend>
+              <div class="eval-row" data-eval-row>
+                <strong>점자메뉴판 구비 여부</strong>
+                <label><input type="radio" name="eval_brailleMenu" value="좋음" /> 좋음</label>
+                <label><input type="radio" name="eval_brailleMenu" value="보통" /> 보통</label>
+                <label><input type="radio" name="eval_brailleMenu" value="미흡" /> 미흡</label>
+              </div>
+              <div class="eval-row" data-eval-row>
+                <strong>경사로 및 출입 접근성</strong>
+                <label><input type="radio" name="eval_rampAccess" value="좋음" /> 좋음</label>
+                <label><input type="radio" name="eval_rampAccess" value="보통" /> 보통</label>
+                <label><input type="radio" name="eval_rampAccess" value="미흡" /> 미흡</label>
+              </div>
+              <div class="eval-row" data-eval-row>
+                <strong>화장실 접근성</strong>
+                <label><input type="radio" name="eval_restroom" value="좋음" /> 좋음</label>
+                <label><input type="radio" name="eval_restroom" value="보통" /> 보통</label>
+                <label><input type="radio" name="eval_restroom" value="미흡" /> 미흡</label>
+              </div>
+              <div class="eval-row" data-eval-row>
+                <strong>안내판·표지판 가독성</strong>
+                <label><input type="radio" name="eval_signage" value="좋음" /> 좋음</label>
+                <label><input type="radio" name="eval_signage" value="보통" /> 보통</label>
+                <label><input type="radio" name="eval_signage" value="미흡" /> 미흡</label>
+              </div>
+            </fieldset>
+            <label class="wide">
+              좋았던 점
+              <textarea name="positive" rows="3" placeholder="예: 직원이 입구 안내를 빠르게 도와주고 내부 동선이 넓었습니다."></textarea>
+            </label>
+            <label class="wide">
+              부족한 점과 필요한 조치
+              <textarea name="issue" rows="4" placeholder="예: 점자메뉴판이 없어 메뉴 확인에 도움이 필요했습니다."></textarea>
+            </label>
+            <label class="wide">
+              현장 사진
+              <input name="photo" type="file" accept="image/*" multiple />
+              <span class="helper-text">사진은 최대 5장까지 첨부할 수 있어요.</span>
+            </label>
+            <div class="form-actions wide">
+              <button class="primary-button" type="submit">기록 저장</button>
+              <button class="ghost-button" type="reset">초기화</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="view" id="recordsView" aria-labelledby="recordsTitle">
+          <h2 class="sr-only" id="recordsTitle">전체 기록 살펴보기</h2>
+          <div class="toolbar panel">
             <label>
               검색
-              <input id="search-input" type="search" placeholder="장소, 주소, 내용 검색" />
+              <input id="searchInput" placeholder="장소, 주소, 내용 검색" />
             </label>
             <label>
               유형
-              <select id="type-filter">
+              <select id="kindFilter">
                 <option value="all">전체</option>
-                <option value="monitoring">모니터링</option>
-                <option value="request">보급 신청</option>
+                <option value="request">신청</option>
+                <option value="monitor">모니터링</option>
               </select>
             </label>
             <label>
               상태
-              <select id="status-filter">
+              <select id="statusFilter">
                 <option value="all">전체</option>
+                <option value="접수">신청 접수</option>
+                <option value="좋음">좋음</option>
+                <option value="일부 보완 필요">일부 보완 필요</option>
                 <option value="조치 필요">조치 필요</option>
-                <option value="확인 완료">확인 완료</option>
-                <option value="신청 접수">신청 접수</option>
               </select>
             </label>
           </div>
 
-          <div class="record-list" id="all-records"></div>
+          <div class="records" id="recordsList" aria-live="polite"></div>
         </section>
 
-        <section class="view" id="settings" aria-labelledby="view-title">
-          <form class="form-grid settings-form" id="settings-form">
-            <div class="form-section full">
-              <h3>구글시트 연결</h3>
-              <p class="helper-text">Apps Script 웹앱 URL을 저장하면 새 기록이 구글시트에도 함께 쌓입니다.</p>
-            </div>
-
-            <label class="full">
-              Apps Script 웹앱 URL
-              <input
-                id="sheet-url"
-                name="sheetUrl"
-                type="url"
-                placeholder="https://script.google.com/macros/s/.../exec"
-              />
-            </label>
-
-            <div class="connection-status full" id="connection-status">
-              구글시트가 아직 연결되지 않았습니다.
-            </div>
-
-            <div class="form-actions full">
-              <button class="primary-button" type="submit">연결 저장</button>
-              <button class="ghost-button" id="test-sheet" type="button">테스트 전송</button>
-              <button class="danger-button" id="disconnect-sheet" type="button">연결 해제</button>
-            </div>
-          </form>
-
-          <section class="panel setup-panel">
-            <div class="panel-heading">
-              <h3>시트 준비 순서</h3>
-            </div>
-            <ol class="setup-list">
-              <li>구글시트 첫 줄에 생성일, 유형, 장소명, 위치, 상태, 태그, 내용, 담당자, 연락처를 적습니다.</li>
-              <li>확장 프로그램에서 Apps Script를 열고 접수 코드를 붙여넣습니다.</li>
-              <li>웹 앱으로 배포한 뒤 /exec로 끝나는 URL을 위에 저장합니다.</li>
-            </ol>
+        <section class="view" id="mapView" aria-labelledby="mapTitle">
+          <div class="notice map-notice">
+            신청이 접수된 장소와 모니터링 장소를 지도에서 확인할 수 있어요. 주소가 입력된 기록만 표시됩니다.
+          </div>
+          <div class="panel map-panel">
+            <div id="mapCanvas" aria-label="접근성 기록 지도"></div>
+            <div class="map-message" id="mapMessage">지도를 준비하고 있어요.</div>
+          </div>
+          <section class="panel map-list-panel" aria-labelledby="mapTitle">
+            <h2 id="mapTitle">지도에 표시되는 기록</h2>
+            <div class="records compact" id="mapRecordsList"></div>
           </section>
+        </section>
+
+        <section class="view" id="sheetView" aria-labelledby="sheetTitle">
+          <div class="panel sheet-panel">
+            <h2 id="sheetTitle">구글시트 연결하기</h2>
+            <p>새 기록 저장 시 아래 고정된 Apps Script 웹앱 URL로도 함께 전송됩니다.</p>
+            <label>
+              Apps Script 웹앱 URL
+              <input id="sheetUrl" readonly />
+            </label>
+            <div class="notice success" id="sheetStatus">구글시트 연결 URL이 고정되어 있습니다.</div>
+            <div class="form-actions">
+              <button class="primary-button" id="testSheetButton" type="button">테스트 전송</button>
+              <button class="ghost-button" id="copySheetButton" type="button">주소 복사</button>
+            </div>
+          </div>
+          <div class="panel sheet-panel">
+            <h2>운영용 잠금 방식</h2>
+            <p>정적 웹페이지 비밀번호는 완전한 보안이 아닙니다. 실제 운영에서는 Google 로그인 허용 명단, Firebase Auth, 또는 Apps Script 관리자 확인 방식으로 모니터링 기록 화면을 분리하는 것이 좋습니다.</p>
+          </div>
         </section>
       </main>
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
-    <template id="record-template">
-      <article class="record-card">
-        <div class="record-main">
-          <div>
-            <p class="record-kicker"></p>
-            <h3></h3>
-            <p class="record-location"></p>
-          </div>
-          <span class="status-pill"></span>
+    <div class="modal-backdrop hidden" id="managerModal" role="dialog" aria-modal="true" aria-labelledby="managerModalTitle">
+      <form class="manager-modal panel" id="managerForm">
+        <h2 id="managerModalTitle">담당자 확인</h2>
+        <p id="managerModalText">이 작업은 담당자만 할 수 있습니다.</p>
+        <label>
+          담당자 비밀번호
+          <input id="managerPassword" type="password" autocomplete="current-password" />
+        </label>
+        <div class="form-actions">
+          <button class="ghost-button" id="managerCancelButton" type="button">취소</button>
+          <button class="danger-button" type="submit">확인</button>
         </div>
-        <p class="record-body"></p>
-        <div class="tag-row"></div>
-        <div class="record-actions">
-          <button class="small-button" data-action="toggle" type="button">상태 변경</button>
-          <button class="small-button danger-text" data-action="delete" type="button">삭제</button>
-        </div>
-      </article>
-    </template>
+      </form>
+    </div>
 
     <script src="app.js"></script>
   </body>
