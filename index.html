@@ -1152,7 +1152,6 @@ fieldset input {
           <div class="top-actions">
             <button class="ghost-button" id="sampleButton" type="button">샘플 기록 넣기</button>
             <button class="secondary-button" id="exportButton" type="button">CSV 내보내기</button>
-            <button class="danger-button" id="clearButton" type="button">담당자 초기화</button>
           </div>
         </header>
 
@@ -1245,15 +1244,12 @@ fieldset input {
             </label>
             <label>
               연락처
-              <input name="contact" placeholder="선택 입력" />
+              <input name="contact" required placeholder="연락 가능한 전화번호 또는 이메일" />
             </label>
             <label class="wide">
               신청 이유
               <textarea name="note" rows="4" placeholder="누가 어떤 상황에서 이용하기 어려웠나요?"></textarea>
             </label>
-            <div class="notice wide">
-              낮은 호출벨은 현재 보급 가능 물품이 아니어서 신청 항목에서 제외했습니다.
-            </div>
             <div class="form-actions wide">
               <button class="primary-button" type="submit">신청 접수</button>
               <button class="ghost-button" type="reset">초기화</button>
@@ -1291,10 +1287,6 @@ fieldset input {
             <label class="wide">
               주소 또는 위치 설명
               <input name="address" placeholder="선택 입력, 도로명 주소나 찾기 쉬운 위치" />
-            </label>
-            <label>
-              행정동
-              <input name="district" placeholder="예: 종로1·2·3·4가동" />
             </label>
             <label>
               모니터링단 이름
@@ -1444,7 +1436,7 @@ fieldset input {
         <h2 id="managerModalTitle">담당자 확인</h2>
         <p id="managerModalText">이 작업은 담당자만 할 수 있습니다.</p>
         <label>
-          담당자 비밀번호
+          확인 정보
           <input id="managerPassword" type="password" autocomplete="current-password" />
         </label>
         <div class="form-actions">
@@ -1508,7 +1500,6 @@ const metricAction = document.querySelector("#metricAction");
 const metricGood = document.querySelector("#metricGood");
 const typeChart = document.querySelector("#typeChart");
 const exportButton = document.querySelector("#exportButton");
-const clearButton = document.querySelector("#clearButton");
 const sheetUrl = document.querySelector("#sheetUrl");
 const sheetStatus = document.querySelector("#sheetStatus");
 const checkSheetButton = document.querySelector("#checkSheetButton");
@@ -1530,6 +1521,7 @@ let currentLocationMarker = null;
 let kakaoMapEntries = new Map();
 let pendingMapFocusId = null;
 let pendingManagerAction = null;
+let pendingManagerValidator = null;
 let editingRecordId = null;
 const expandedRecords = new Set();
 
@@ -1835,7 +1827,6 @@ function recordTemplate(record, compact) {
   const cardClass =
     normalized.status === "조치 필요" ? "action" : normalized.status === "일부 보완 필요" ? "partial" : "";
   const body = [
-    normalized.district && `행정동: ${escapeHtml(normalized.district)}`,
     normalized.note && `신청 이유: ${escapeHtml(normalized.note)}`,
     normalized.positive && `좋았던 점: ${escapeHtml(normalized.positive)}`,
     normalized.issue && `부족한 점/조치: ${escapeHtml(normalized.issue)}`,
@@ -2274,8 +2265,9 @@ function insertSampleRecords() {
   showToast("샘플 기록 2건을 넣었어요.");
 }
 
-function requestManagerAction(message, action) {
+function requestManagerAction(message, action, validator) {
   pendingManagerAction = action;
+  pendingManagerValidator = validator || ((value) => value === MANAGER_PASSWORD);
   managerModalText.textContent = message;
   managerPassword.value = "";
   managerModal.classList.remove("hidden");
@@ -2284,6 +2276,7 @@ function requestManagerAction(message, action) {
 
 function closeManagerModal() {
   pendingManagerAction = null;
+  pendingManagerValidator = null;
   managerModal.classList.add("hidden");
   managerPassword.value = "";
 }
@@ -2371,7 +2364,6 @@ function editRecord(id) {
     monitorForm.elements.placeName.value = record.placeName || "";
     monitorForm.elements.visitDate.value = record.visitDate || new Date().toISOString().slice(0, 10);
     monitorForm.elements.address.value = record.address || "";
-    monitorForm.elements.district.value = record.district || "";
     monitorForm.elements.reporter.value = record.reporter || "";
     monitorForm.elements.status.value = record.status || "";
     monitorForm.elements.positive.value = record.positive || "";
@@ -2483,7 +2475,7 @@ monitorForm.addEventListener("submit", async (event) => {
     placeName: formDataValue(monitorForm, "placeName"),
     visitDate: formDataValue(monitorForm, "visitDate"),
     address: formDataValue(monitorForm, "address"),
-    district: formDataValue(monitorForm, "district"),
+    district: "",
     reporter: formDataValue(monitorForm, "reporter"),
     status: formDataValue(monitorForm, "status"),
     checks: getCheckedValues(monitorForm, "checks"),
@@ -2522,7 +2514,18 @@ recordsList.addEventListener("click", (event) => {
   }
 
   if (editButton) {
-    editRecord(editButton.dataset.edit);
+    const record = records.find((item) => item.id === editButton.dataset.edit);
+    if (!record) return;
+    const normalized = normalizeRecord(record);
+    const isRequest = normalized.kind === "request";
+    const message = isRequest
+      ? "수정하려면 신청 시 입력한 연락처 또는 담당자 비밀번호를 입력해주세요."
+      : "수정하려면 모니터링단 비밀번호 또는 담당자 비밀번호를 입력해주세요.";
+    requestManagerAction(
+      message,
+      () => editRecord(editButton.dataset.edit),
+      (value) => value === MANAGER_PASSWORD || (isRequest ? value && value === normalized.contact : value === getMonitorPassword()),
+    );
     return;
   }
 
@@ -2564,18 +2567,6 @@ kindFilter.addEventListener("change", renderRecords);
 statusFilter.addEventListener("change", renderRecords);
 sampleButton.addEventListener("click", insertSampleRecords);
 exportButton.addEventListener("click", exportCsv);
-clearButton.addEventListener("click", () => {
-  if (!records.length) return;
-  requestManagerAction("전체 기록을 초기화하려면 담당자 비밀번호를 입력해주세요.", () => {
-    const deletedRecords = [...records];
-    records = [];
-    saveRecords();
-    render();
-    sendToSheet({ deletedCount: deletedRecords.length, createdAt: new Date().toISOString() }, "clear");
-    showToast("전체 기록을 삭제했어요.");
-  });
-});
-
 testSheetButton.addEventListener("click", () => {
   sendToSheet({
     id: "test",
@@ -2617,8 +2608,9 @@ checkSheetButton.addEventListener("click", async () => {
 
 managerForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  if (managerPassword.value !== MANAGER_PASSWORD) {
-    showToast("담당자 비밀번호를 확인해주세요.");
+  const validator = pendingManagerValidator || ((value) => value === MANAGER_PASSWORD);
+  if (!validator(managerPassword.value)) {
+    showToast("확인 정보를 다시 입력해주세요.");
     return;
   }
 
