@@ -58,6 +58,11 @@ button {
   gap: 28px;
 }
 
+.mobile-menu-button,
+.menu-backdrop {
+  display: none;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -743,6 +748,10 @@ fieldset input {
   margin-bottom: 16px;
 }
 
+.map-list-panel .record-card {
+  cursor: pointer;
+}
+
 .map-balloon {
   min-width: 180px;
   padding: 12px 14px;
@@ -816,6 +825,14 @@ fieldset input {
   transform: rotate(-45deg);
 }
 
+.fallback-pin.request .pin-dot {
+  background: #2978db;
+}
+
+.fallback-pin.monitor .pin-dot {
+  background: #2f7d68;
+}
+
 .pin-balloon {
   position: absolute;
   left: 20px;
@@ -832,7 +849,8 @@ fieldset input {
 }
 
 .fallback-pin:hover .pin-balloon,
-.fallback-pin:focus .pin-balloon {
+.fallback-pin:focus .pin-balloon,
+.fallback-pin.active .pin-balloon {
   display: grid;
   gap: 6px;
 }
@@ -895,12 +913,57 @@ fieldset input {
   }
 
   .sidebar {
-    position: static;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    width: min(82vw, 300px);
+    transform: translateX(-100%);
     padding: 18px;
+    overflow-y: auto;
+    transition: transform 0.2s ease;
+    box-shadow: 20px 0 40px rgba(0, 0, 0, 0.22);
+  }
+
+  body.menu-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .mobile-menu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    position: fixed;
+    left: 14px;
+    top: 14px;
+    z-index: 35;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--ink);
+    padding: 10px 14px;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(23, 32, 29, 0.14);
+  }
+
+  .menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: 0;
+    background: rgba(0, 0, 0, 0.28);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  body.menu-open .menu-backdrop {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .quick-stats {
@@ -908,7 +971,7 @@ fieldset input {
   }
 
   main {
-    padding: 20px;
+    padding: 76px 20px 20px;
   }
 
   .topbar,
@@ -967,8 +1030,12 @@ fieldset input {
 </style>
   </head>
   <body>
+    <button class="mobile-menu-button" id="mobileMenuButton" type="button" aria-controls="appSidebar" aria-expanded="false">
+      ☰ 메뉴
+    </button>
+    <button class="menu-backdrop" id="menuBackdrop" type="button" aria-label="메뉴 닫기"></button>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="앱 메뉴">
+      <aside class="sidebar" id="appSidebar" aria-label="앱 메뉴">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">M</span>
           <div>
@@ -1347,6 +1414,8 @@ const views = {
 
 const pageTitle = document.querySelector("#pageTitle");
 const tabButtons = document.querySelectorAll(".tab-button");
+const mobileMenuButton = document.querySelector("#mobileMenuButton");
+const menuBackdrop = document.querySelector("#menuBackdrop");
 const requestForm = document.querySelector("#requestForm");
 const monitorGate = document.querySelector("#monitorGate");
 const monitorForm = document.querySelector("#monitorForm");
@@ -1383,6 +1452,8 @@ let records = loadRecords();
 let kakaoMap;
 let kakaoGeocoder;
 let kakaoMarkers = [];
+let kakaoMapEntries = new Map();
+let pendingMapFocusId = null;
 let pendingManagerAction = null;
 let editingRecordId = null;
 const expandedRecords = new Set();
@@ -1427,6 +1498,11 @@ function switchView(viewName) {
   if (viewName === "map") {
     renderMap();
   }
+}
+
+function setMobileMenu(open) {
+  document.body.classList.toggle("menu-open", open);
+  mobileMenuButton.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
 function getCheckedValues(form, name) {
@@ -1647,7 +1723,9 @@ function renderMapRecords() {
     return;
   }
 
-  mapRecordsList.innerHTML = located.map((record) => recordTemplate(record, true)).join("");
+  mapRecordsList.innerHTML = located
+    .map((record) => `<div class="map-record-item" data-map-focus="${normalizeRecord(record).id}">${recordTemplate(record, true)}</div>`)
+    .join("");
 }
 
 function renderTypeChart() {
@@ -1809,6 +1887,23 @@ function loadKakaoMapSdk() {
   });
 }
 
+function mapPinColor(record) {
+  return normalizeRecord(record).kind === "monitor" ? "#2f7d68" : "#2978db";
+}
+
+function mapPinClass(record) {
+  return normalizeRecord(record).kind === "monitor" ? "monitor" : "request";
+}
+
+function createMarkerImage(record) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="42" height="48" viewBox="0 0 42 48"><path fill="${mapPinColor(record)}" stroke="white" stroke-width="4" d="M21 2C10.5 2 3 9.8 3 19.8 3 33 21 46 21 46s18-13 18-26.2C39 9.8 31.5 2 21 2z"/><circle cx="21" cy="20" r="7" fill="white"/></svg>`;
+  return new kakao.maps.MarkerImage(
+    `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    new kakao.maps.Size(42, 48),
+    { offset: new kakao.maps.Point(21, 48) },
+  );
+}
+
 async function renderMap() {
   const located = records.filter((record) => normalizeRecord(record).address);
 
@@ -1817,6 +1912,12 @@ async function renderMap() {
   if (!located.length) {
     mapMessage.textContent = "주소가 입력된 신청이나 모니터링 기록이 생기면 지도에 표시됩니다.";
     mapMessage.classList.remove("hidden");
+    mapCanvas.innerHTML = "";
+    return;
+  }
+
+  if (window.location.protocol === "file:") {
+    renderFallbackMap(located);
     return;
   }
 
@@ -1829,6 +1930,14 @@ async function renderMap() {
 
   mapMessage.classList.add("hidden");
 
+  kakaoMarkers.forEach((marker) => marker.setMap(null));
+  kakaoMarkers = [];
+  kakaoMapEntries = new Map();
+  if (mapCanvas.querySelector(".fallback-map")) {
+    mapCanvas.innerHTML = "";
+    kakaoMap = null;
+  }
+
   if (!kakaoMap) {
     kakaoMap = new kakao.maps.Map(mapCanvas, {
       center: new kakao.maps.LatLng(37.5665, 126.978),
@@ -1837,13 +1946,8 @@ async function renderMap() {
     kakaoGeocoder = new kakao.maps.services.Geocoder();
   }
 
-  kakaoMarkers.forEach((marker) => marker.setMap(null));
-  kakaoMarkers = [];
-  if (mapCanvas.querySelector(".fallback-map")) {
-    mapCanvas.innerHTML = "";
-    kakaoMap = null;
-  }
   const bounds = new kakao.maps.LatLngBounds();
+  let geocodedCount = 0;
 
   located.forEach((record) => {
     const normalized = normalizeRecord(record);
@@ -1853,7 +1957,11 @@ async function renderMap() {
       const position = new kakao.maps.LatLng(result[0].y, result[0].x);
       normalized.lat = result[0].y;
       normalized.lng = result[0].x;
-      const marker = new kakao.maps.Marker({ map: kakaoMap, position });
+      const marker = new kakao.maps.Marker({
+        map: kakaoMap,
+        position,
+        image: createMarkerImage(normalized),
+      });
       const tags = recordTags(normalized).slice(0, 3).join(", ") || normalized.status;
       const infoWindow = new kakao.maps.InfoWindow({
         content: `<div class="map-balloon"><strong>${escapeHtml(normalized.placeName)}</strong><span>${escapeHtml(tags)}</span></div>`,
@@ -1864,10 +1972,23 @@ async function renderMap() {
       });
 
       kakaoMarkers.push(marker);
+      kakaoMapEntries.set(normalized.id, { marker, infoWindow, position });
       bounds.extend(position);
       kakaoMap.setBounds(bounds);
+      geocodedCount += 1;
+      if (pendingMapFocusId === normalized.id) {
+        focusMapRecord(normalized.id);
+      }
     });
   });
+
+  window.setTimeout(() => {
+    if (!kakaoMarkers.length && views.map.classList.contains("active")) {
+      renderFallbackMap(located);
+      mapMessage.textContent = "주소 좌표를 바로 찾지 못해 미리보기 지도로 표시하고 있어요.";
+      mapMessage.classList.remove("hidden");
+    }
+  }, 1800);
 }
 
 function renderFallbackMap(located) {
@@ -1882,7 +2003,7 @@ function renderFallbackMap(located) {
           const top = 22 + ((index * 31) % 52);
           const tags = recordTags(normalized).slice(0, 2).join(", ") || normalized.status;
           return `
-            <button class="fallback-pin" style="left:${left}%; top:${top}%" type="button">
+            <button class="fallback-pin ${mapPinClass(normalized)}" data-map-pin="${escapeHtml(normalized.id)}" style="left:${left}%; top:${top}%" type="button">
               <span class="pin-dot"></span>
               <span class="pin-balloon"><strong>${escapeHtml(normalized.placeName)}</strong>${escapeHtml(tags)}</span>
             </button>
@@ -1892,6 +2013,26 @@ function renderFallbackMap(located) {
       <div class="fallback-label">카카오 지도 도메인 설정 전 미리보기</div>
     </div>
   `;
+}
+
+function focusMapRecord(recordId) {
+  pendingMapFocusId = recordId;
+  mapCanvas.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const fallbackPin = [...mapCanvas.querySelectorAll("[data-map-pin]")].find((pin) => pin.dataset.mapPin === recordId);
+  if (fallbackPin) {
+    mapCanvas.querySelectorAll(".fallback-pin.active").forEach((pin) => pin.classList.remove("active"));
+    fallbackPin.classList.add("active");
+    fallbackPin.focus();
+    return;
+  }
+
+  const entry = kakaoMapEntries.get(recordId);
+  if (!entry || !kakaoMap) return;
+  kakaoMap.setLevel(3);
+  kakaoMap.panTo(entry.position);
+  entry.infoWindow.open(kakaoMap, entry.marker);
+  pendingMapFocusId = null;
 }
 
 function refreshMapSoon() {
@@ -2116,11 +2257,29 @@ function editRecord(id) {
 }
 
 tabButtons.forEach((button) => {
-  button.addEventListener("click", () => switchView(button.dataset.view));
+  button.addEventListener("click", () => {
+    switchView(button.dataset.view);
+    setMobileMenu(false);
+  });
 });
 
 document.querySelectorAll("[data-view-jump]").forEach((button) => {
-  button.addEventListener("click", () => switchView(button.dataset.viewJump));
+  button.addEventListener("click", () => {
+    switchView(button.dataset.viewJump);
+    setMobileMenu(false);
+  });
+});
+
+mobileMenuButton.addEventListener("click", () => {
+  setMobileMenu(!document.body.classList.contains("menu-open"));
+});
+
+menuBackdrop.addEventListener("click", () => setMobileMenu(false));
+
+mapRecordsList.addEventListener("click", (event) => {
+  const item = event.target.closest("[data-map-focus]");
+  if (!item) return;
+  focusMapRecord(item.dataset.mapFocus);
 });
 
 document.querySelectorAll("[data-metric-filter]").forEach((card) => {
@@ -2250,13 +2409,6 @@ recordsList.addEventListener("click", (event) => {
 });
 
 recentRecordsList.addEventListener("click", (event) => {
-  const toggleButton = event.target.closest("[data-toggle]");
-  if (toggleButton) {
-    toggleRecord(toggleButton.dataset.toggle);
-  }
-});
-
-mapRecordsList.addEventListener("click", (event) => {
   const toggleButton = event.target.closest("[data-toggle]");
   if (toggleButton) {
     toggleRecord(toggleButton.dataset.toggle);
