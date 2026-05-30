@@ -533,6 +533,13 @@ fieldset input {
   color: var(--brand-dark);
 }
 
+.notice.danger {
+  margin: 18px 0;
+  border-color: #f0bcbc;
+  background: #fff5f5;
+  color: var(--danger);
+}
+
 .toolbar {
   padding: 16px;
   display: grid;
@@ -825,12 +832,24 @@ fieldset input {
   transform: rotate(-45deg);
 }
 
-.fallback-pin.request .pin-dot {
+.fallback-pin.status-request .pin-dot {
   background: #2978db;
 }
 
-.fallback-pin.monitor .pin-dot {
+.fallback-pin.status-action .pin-dot {
+  background: #d64040;
+}
+
+.fallback-pin.status-pending .pin-dot {
+  background: #f0be4f;
+}
+
+.fallback-pin.status-good .pin-dot {
   background: #2f7d68;
+}
+
+.fallback-pin.current .pin-dot {
+  background: #5b3f8c;
 }
 
 .pin-balloon {
@@ -869,6 +888,47 @@ fieldset input {
   padding: 8px 12px;
   color: var(--muted);
   font-weight: 800;
+}
+
+.map-tools {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.map-legend {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 3;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 180px);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 7px 10px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: #38433f;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dot);
 }
 
 .modal-backdrop {
@@ -1336,6 +1396,16 @@ fieldset input {
             신청이 접수된 장소와 모니터링 장소를 지도에서 확인할 수 있어요. 주소가 입력된 기록만 표시됩니다.
           </div>
           <div class="panel map-panel">
+            <div class="map-legend" aria-label="지도 핀 색상 안내">
+              <span class="legend-item"><span class="legend-dot" style="--dot:#2978db"></span>신청 접수</span>
+              <span class="legend-item"><span class="legend-dot" style="--dot:#d64040"></span>조치 필요</span>
+              <span class="legend-item"><span class="legend-dot" style="--dot:#f0be4f"></span>추후 확인</span>
+              <span class="legend-item"><span class="legend-dot" style="--dot:#2f7d68"></span>양호</span>
+              <span class="legend-item"><span class="legend-dot" style="--dot:#5b3f8c"></span>내 위치</span>
+            </div>
+            <div class="map-tools">
+              <button class="ghost-button" id="myLocationButton" type="button">내 위치 표시</button>
+            </div>
             <div id="mapCanvas" aria-label="접근성 기록 지도"></div>
             <div class="map-message" id="mapMessage">지도를 준비하고 있어요.</div>
           </div>
@@ -1355,6 +1425,7 @@ fieldset input {
             </label>
             <div class="notice success" id="sheetStatus">구글시트 연결 URL이 고정되어 있습니다.</div>
             <div class="form-actions">
+              <button class="ghost-button" id="checkSheetButton" type="button">연결 확인</button>
               <button class="primary-button" id="testSheetButton" type="button">테스트 전송</button>
               <button class="ghost-button" id="copySheetButton" type="button">주소 복사</button>
             </div>
@@ -1425,6 +1496,7 @@ const recentRecordsList = document.querySelector("#recentRecordsList");
 const mapRecordsList = document.querySelector("#mapRecordsList");
 const mapCanvas = document.querySelector("#mapCanvas");
 const mapMessage = document.querySelector("#mapMessage");
+const myLocationButton = document.querySelector("#myLocationButton");
 const searchInput = document.querySelector("#searchInput");
 const kindFilter = document.querySelector("#kindFilter");
 const statusFilter = document.querySelector("#statusFilter");
@@ -1438,6 +1510,8 @@ const typeChart = document.querySelector("#typeChart");
 const exportButton = document.querySelector("#exportButton");
 const clearButton = document.querySelector("#clearButton");
 const sheetUrl = document.querySelector("#sheetUrl");
+const sheetStatus = document.querySelector("#sheetStatus");
+const checkSheetButton = document.querySelector("#checkSheetButton");
 const testSheetButton = document.querySelector("#testSheetButton");
 const copySheetButton = document.querySelector("#copySheetButton");
 const sampleButton = document.querySelector("#sampleButton");
@@ -1452,6 +1526,7 @@ let records = loadRecords();
 let kakaoMap;
 let kakaoGeocoder;
 let kakaoMarkers = [];
+let currentLocationMarker = null;
 let kakaoMapEntries = new Map();
 let pendingMapFocusId = null;
 let pendingManagerAction = null;
@@ -1760,7 +1835,6 @@ function recordTemplate(record, compact) {
   const cardClass =
     normalized.status === "조치 필요" ? "action" : normalized.status === "일부 보완 필요" ? "partial" : "";
   const body = [
-    normalized.address && `위치: ${escapeHtml(normalized.address)}`,
     normalized.district && `행정동: ${escapeHtml(normalized.district)}`,
     normalized.note && `신청 이유: ${escapeHtml(normalized.note)}`,
     normalized.positive && `좋았던 점: ${escapeHtml(normalized.positive)}`,
@@ -1887,16 +1961,35 @@ function loadKakaoMapSdk() {
   });
 }
 
+function mapPinStatus(record) {
+  const normalized = normalizeRecord(record);
+  if (normalized.status === "조치 필요") return "action";
+  if (normalized.status === "확인 중" || normalized.status === "일부 보완 필요") return "pending";
+  if (normalized.status === "확인 완료" || normalized.status === "좋음") return "good";
+  return "request";
+}
+
 function mapPinColor(record) {
-  return normalizeRecord(record).kind === "monitor" ? "#2f7d68" : "#2978db";
+  const colors = {
+    request: "#2978db",
+    action: "#d64040",
+    pending: "#f0be4f",
+    good: "#2f7d68",
+    current: "#5b3f8c",
+  };
+  return colors[mapPinStatus(record)] || colors.request;
 }
 
 function mapPinClass(record) {
-  return normalizeRecord(record).kind === "monitor" ? "monitor" : "request";
+  return `status-${mapPinStatus(record)}`;
 }
 
 function createMarkerImage(record) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="42" height="48" viewBox="0 0 42 48"><path fill="${mapPinColor(record)}" stroke="white" stroke-width="4" d="M21 2C10.5 2 3 9.8 3 19.8 3 33 21 46 21 46s18-13 18-26.2C39 9.8 31.5 2 21 2z"/><circle cx="21" cy="20" r="7" fill="white"/></svg>`;
+  return createMarkerImageByColor(mapPinColor(record));
+}
+
+function createMarkerImageByColor(color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="42" height="48" viewBox="0 0 42 48"><path fill="${color}" stroke="white" stroke-width="4" d="M21 2C10.5 2 3 9.8 3 19.8 3 33 21 46 21 46s18-13 18-26.2C39 9.8 31.5 2 21 2z"/><circle cx="21" cy="20" r="7" fill="white"/></svg>`;
   return new kakao.maps.MarkerImage(
     `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
     new kakao.maps.Size(42, 48),
@@ -2033,6 +2126,41 @@ function focusMapRecord(recordId) {
   kakaoMap.panTo(entry.position);
   entry.infoWindow.open(kakaoMap, entry.marker);
   pendingMapFocusId = null;
+}
+
+function showMyLocation() {
+  if (!navigator.geolocation) {
+    showToast("이 브라우저에서는 현재 위치를 확인할 수 없어요.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      if (!kakaoMap || !window.kakao?.maps) {
+        showToast("현재 위치는 GitHub Pages의 실제 카카오 지도에서 표시할 수 있어요.");
+        return;
+      }
+
+      const latLng = new kakao.maps.LatLng(position.coords.latitude, position.coords.longitude);
+      if (currentLocationMarker) currentLocationMarker.setMap(null);
+      currentLocationMarker = new kakao.maps.Marker({
+        map: kakaoMap,
+        position: latLng,
+        image: createMarkerImageByColor("#5b3f8c"),
+      });
+      const infoWindow = new kakao.maps.InfoWindow({
+        content: '<div class="map-balloon"><strong>내 현재 위치</strong><span>브라우저 위치 권한 기준</span></div>',
+      });
+      infoWindow.open(kakaoMap, currentLocationMarker);
+      kakaoMap.setLevel(4);
+      kakaoMap.panTo(latLng);
+      showToast("현재 위치를 지도에 표시했어요.");
+    },
+    () => {
+      showToast("위치 권한이 허용되지 않았어요.");
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+  );
 }
 
 function refreshMapSoon() {
@@ -2276,6 +2404,8 @@ mobileMenuButton.addEventListener("click", () => {
 
 menuBackdrop.addEventListener("click", () => setMobileMenu(false));
 
+myLocationButton.addEventListener("click", showMyLocation);
+
 mapRecordsList.addEventListener("click", (event) => {
   const item = event.target.closest("[data-map-focus]");
   if (!item) return;
@@ -2463,6 +2593,25 @@ copySheetButton.addEventListener("click", async () => {
     showToast("시트 주소를 복사했어요.");
   } catch {
     showToast("복사 권한이 없어 주소를 선택해 복사해주세요.");
+  }
+});
+
+checkSheetButton.addEventListener("click", async () => {
+  sheetStatus.textContent = "연결 상태를 확인하고 있어요.";
+  sheetStatus.className = "notice";
+  try {
+    await fetch(SHEET_WEB_APP_URL, {
+      method: "GET",
+      mode: "no-cors",
+      cache: "no-store",
+    });
+    sheetStatus.textContent = "웹앱 URL이 응답했습니다. 테스트 전송 후 records 탭에 행이 생기면 저장까지 정상입니다.";
+    sheetStatus.className = "notice success";
+    showToast("시트 연결 URL이 응답했어요.");
+  } catch {
+    sheetStatus.textContent = "연결 확인에 실패했습니다. Apps Script 배포 URL과 접근 권한을 확인해주세요.";
+    sheetStatus.className = "notice danger";
+    showToast("시트 연결을 확인하지 못했어요.");
   }
 });
 
